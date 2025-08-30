@@ -1,0 +1,77 @@
+You are an expert mobile app engineer + product designer. Build a production-ready Android app called **OfferShare** (working name) — a clean, fast, and secure marketplace where users post Buy-1-Get-1 (or similar) offers and other users join to split the purchase (50-50). Deliver a complete Android Studio project (Kotlin, Jetpack Compose + Material3), Firebase backend (Firestore, Auth, Cloud Functions, FCM), and documentation.
+
+**Primary goal:** Create a smooth, Uber-like user experience (fast animations, bottom sheets, instant feedback) and a Reddit-inspired color palette and clarity. The app must be developer-friendly so a beginner who can read code can modify UI and behavior.
+
+---
+
+## Look & Feel / Visual System
+- **Inspiration:** Uber’s fluid UX + Reddit’s color palette and clarity.
+- **Color palette (Reddit-inspired):**
+  - Primary (Reddit orange): `#FF4500`
+  - Background / Canvas: `#FFFFFF`
+  - Surface / Cards: `#F6F7F8`
+  - Primary text / headings: `#1A1A1B`
+  - Secondary text: `#878A8C`
+  - Link / Accent: `#0079D3`
+  - Error: `#D93025`
+  - Success: `#22C55E`
+- **Typography:** Roboto / Inter. Use Roboto for Android defaults. Sizes: H1 20sp, H2 16sp, Body 14sp, Small 12sp.
+- **Iconography:** Material icons + custom rounded icons for “offer”, “split”, “chat”.
+- **Animations:** Use Material Motion and Compose animations. Include subtle elevation changes, card entrance animation, skeleton loaders, and bottom-sheet swipe-up transitions.
+- **UX patterns:** Bottom navigation (Home, Post, Chats, Wallet, Profile), top app bar with search, persistent FAB for quick post (optional).
+
+---
+
+## Core Features & Flows (MVP)
+1. **Auth & Onboarding**
+   - Firebase Auth (Phone OTP + Email). Simple onboarding screens with explanation of how splitting works.
+   - Ask for display name and optional profile photo.
+
+2. **Home (Feed)**
+   - Feed of open offers (card view). Each card shows product image, title, price, offer type, distance (if location enabled), time posted, owner rating, and a primary CTA button: **“Join & Split”**.
+   - Search + Filter (category, price range, nearest).
+   - Pull-to-refresh + infinite scroll with prefetch.
+
+3. **Create Offer**
+   - Form: Product name, price, offer type (Buy1Get1...), images (camera/gallery), location (auto or manual), description, optional meeting preference.
+   - Preview screen with final CTA **“Publish Offer”**.
+
+4. **Offer Detail**
+   - Full card, images carousel, owner profile tap, request list (shows who joined), chat button, **Join** button.
+   - If one other user joins -> status becomes **Matched**; show split confirmation bottom sheet.
+
+5. **Join Flow**
+   - Tap Join -> confirmation bottom sheet with split breakdown (50/50), expected payment method, and **Request to Match**.
+   - On second user confirmation, both users get a matched screen with options: Chat, Share order details, Complete purchase.
+
+6. **Chat & Coordination**
+   - Real-time 1:1 chat for matched users (Firestore + simple typing indicator, message read receipts).
+   - Quick action buttons in chat: Share location, Share product link, Call.
+
+7. **Payments (MVP approach)**
+   - MVP: Display split amount and provide instructions to manually pay (e.g., UPI/Pay link). Record “I paid” and allow confirmation by both.
+   - Optional: Integrate Razorpay/Stripe for in-app split payment and escrow (if asked later).
+
+8. **Notifications**
+   - FCM push notifications: New match requests, join confirmations, chat messages, offer expired.
+
+9. **Profile & Ratings**
+   - Edit profile, list of posted offers, matches, completed transactions.
+   - After a completed transaction, both users can rate & leave feedback.
+
+10. **Admin**
+    - Simple Firestore-based admin flag to remove bad offers and view reports.
+
+---
+
+## Data Model (Firestore collections sample)
+- `users/{userId}`:
+  ```json
+  {
+    "id": "uid",
+    "name": "Karan",
+    "phone": "+91xxxx",
+    "photoUrl": "...",
+    "rating": 4.9,
+    "deviceToken": "FCM_TOKEN"
+  }
