@@ -67,7 +67,7 @@ export class DatabaseStorage implements IStorage {
 
   // Offer operations
   async createOffer(insertOffer: InsertOffer): Promise<Offer> {
-    const result = await db.insert(offers).values([insertOffer]).returning();
+    const result = await db.insert(offers).values(insertOffer).returning();
     return result[0];
   }
 
@@ -77,16 +77,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOffers(filters: { location?: string; status?: string; limit?: number } = {}): Promise<Offer[]> {
-    const conditions: any[] = [];
-    
-    if (filters.status) {
-      conditions.push(eq(offers.status, filters.status));
-    }
-    
     let query = db.select().from(offers);
     
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+    if (filters.status) {
+      query = query.where(eq(offers.status, filters.status));
     }
     
     query = query.orderBy(desc(offers.createdAt));
