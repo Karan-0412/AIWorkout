@@ -52,7 +52,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const result = await db.insert(users).values([insertUser]).returning();
+    const result = await db.insert(users).values(insertUser).returning();
     return result[0];
   }
 
@@ -77,13 +77,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOffers(filters: { location?: string; status?: string; limit?: number } = {}): Promise<Offer[]> {
-    let query = db.select().from(offers);
+    let query = db.select().from(offers).orderBy(desc(offers.createdAt));
     
     if (filters.status) {
       query = query.where(eq(offers.status, filters.status));
     }
-    
-    query = query.orderBy(desc(offers.createdAt));
     
     if (filters.limit) {
       query = query.limit(filters.limit);
@@ -103,7 +101,7 @@ export class DatabaseStorage implements IStorage {
 
   // Join request operations
   async createJoinRequest(insertJoinRequest: InsertJoinRequest): Promise<JoinRequest> {
-    const result = await db.insert(joinRequests).values([insertJoinRequest]).returning();
+    const result = await db.insert(joinRequests).values(insertJoinRequest).returning();
     return result[0];
   }
 
@@ -122,7 +120,7 @@ export class DatabaseStorage implements IStorage {
 
   // Chat operations
   async createChat(chatData: Omit<Chat, "id" | "createdAt">): Promise<Chat> {
-    const result = await db.insert(chats).values([chatData]).returning();
+    const result = await db.insert(chats).values(chatData).returning();
     return result[0];
   }
 
@@ -140,7 +138,7 @@ export class DatabaseStorage implements IStorage {
 
   // Message operations
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
-    const result = await db.insert(messages).values([insertMessage]).returning();
+    const result = await db.insert(messages).values(insertMessage).returning();
     const message = result[0];
 
     // Update chat's last message
@@ -178,7 +176,7 @@ export class DatabaseStorage implements IStorage {
 
   // Rating operations
   async createRating(insertRating: InsertRating): Promise<Rating> {
-    const result = await db.insert(ratings).values([insertRating]).returning();
+    const result = await db.insert(ratings).values(insertRating).returning();
     return result[0];
   }
 
