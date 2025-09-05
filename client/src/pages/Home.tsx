@@ -15,6 +15,12 @@ export function Home() {
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   const { theme, toggleTheme } = useThemeContext();
   const { toast } = useToast();
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Array<{ id: string; title: string; body: string; time: string; read?: boolean }>>([
+    { id: "n1", title: "Match found", body: "Someone joined your Sony Headphones offer.", time: "2m" },
+    { id: "n2", title: "New message", body: "Rahul: Let's proceed today.", time: "10m" },
+    { id: "n3", title: "Offer reminder", body: "Your Nike offer expires soon.", time: "1h" },
+  ]);
 
   // Mock offers data - in production this would come from Firebase
   const offers = [
@@ -120,7 +126,7 @@ export function Home() {
                 <Moon className="w-4 h-4 text-accent" />
               )}
             </Button>
-            <Button variant="ghost" size="sm" className="p-2.5 rounded-full relative hover:bg-accent/10" data-testid="button-notifications">
+            <Button variant="ghost" size="sm" className="p-2.5 rounded-full relative hover:bg-accent/10" onClick={() => setIsNotifOpen(v => !v)} data-testid="button-notifications">
               <Bell className="w-4 h-4 text-muted-foreground" />
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-xs text-destructive-foreground rounded-full flex items-center justify-center">
                 3
@@ -129,6 +135,35 @@ export function Home() {
           </div>
         </div>
       </header>
+
+      {isNotifOpen && (
+        <div className="fixed top-16 right-4 left-4 max-w-md mx-auto z-50">
+          <div className="bg-card border border-border rounded-xl shadow-xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <h3 className="font-semibold">Notifications</h3>
+              <Button variant="ghost" size="sm" onClick={() => setIsNotifOpen(false)}>Close</Button>
+            </div>
+            <div className="max-h-80 overflow-y-auto divide-y divide-border">
+              {notifications.map(n => (
+                <div key={n.id} className="p-4 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">{n.title}</p>
+                    <span className="text-xs text-muted-foreground">{n.time}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{n.body}</p>
+                </div>
+              ))}
+              {notifications.length === 0 && (
+                <div className="p-6 text-center text-sm text-muted-foreground">You're all caught up.</div>
+              )}
+            </div>
+            <div className="px-4 py-3 border-t border-border flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => setNotifications([])}>Clear all</Button>
+              <Button size="sm" className="flex-1" onClick={() => setIsNotifOpen(false)}>Done</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="pb-[calc(env(safe-area-inset-bottom)+88px)]">
