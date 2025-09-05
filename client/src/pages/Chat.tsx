@@ -46,9 +46,9 @@ export function Chat() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen flex flex-col">
+    <div className="max-w-md mx-auto bg-background min-h-screen flex flex-col pb-[calc(env(safe-area-inset-bottom)+88px)]">
       {/* Header */}
-      <header className="bg-card border-b border-border p-4">
+      <header className="bg-card border-b border-border p-4" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex items-center space-x-3">
           <Button
             variant="ghost"
