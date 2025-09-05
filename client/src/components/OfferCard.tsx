@@ -32,6 +32,7 @@ interface OfferCardProps {
 
 export function OfferCard({ offer, onJoin }: OfferCardProps) {
   const [isLiked, setIsLiked] = useState(false);
+  const [, navigate] = useLocation();
 
   const getOfferTypeLabel = (type: string) => {
     switch (type) {
