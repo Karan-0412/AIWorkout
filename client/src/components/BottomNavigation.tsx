@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Home, Plus, MessageCircle, Wallet, User } from "lucide-react";
+import { Home, Plus, MessageCircle, Map, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function BottomNavigation() {
@@ -8,8 +8,8 @@ export function BottomNavigation() {
   const navItems = [
     { icon: Home, label: "Home", path: "/", testId: "nav-home" },
     { icon: Plus, label: "Post", path: "/create", testId: "nav-post" },
+    { icon: Map, label: "Map", path: "/map", testId: "nav-map" },
     { icon: MessageCircle, label: "Chats", path: "/chats", testId: "nav-chats" },
-    { icon: Wallet, label: "Wallet", path: "/wallet", testId: "nav-wallet" },
     { icon: User, label: "Profile", path: "/profile", testId: "nav-profile" },
   ];
 
