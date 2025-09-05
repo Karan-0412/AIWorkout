@@ -42,7 +42,7 @@ function AppContent() {
         <Route path="/profile" component={Profile} />
         <Route component={NotFound} />
       </Switch>
-      <BottomNavigation />
+      {location !== "/map" && <BottomNavigation />}
     </div>
   );
 }
