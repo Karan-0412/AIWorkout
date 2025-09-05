@@ -161,7 +161,7 @@ export function OfferCard({ offer, onJoin }: OfferCardProps) {
               variant="outline"
               size="sm"
               className="p-2.5"
-              onClick={() => navigate(`/chat/${offer.id}`)}
+              onClick={() => navigate(`/chats`)}
               data-testid={`button-chat-${offer.id}`}
             >
               <MessageCircle className="w-4 h-4" />
