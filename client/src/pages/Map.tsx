@@ -6,7 +6,7 @@ export function Map() {
   const [, navigate] = useLocation();
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen pb-[calc(env(safe-area-inset-bottom)+88px)]" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+    <div className="max-w-md mx-auto bg-background min-h-screen pb-[calc(env(safe-area-inset-bottom)+88px)] flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <header
         className="sticky top-0 z-40 bg-background border-b border-border transition-theme"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
@@ -20,12 +20,15 @@ export function Map() {
         </div>
       </header>
 
-      <main className="p-4 space-y-4">
-        <div className="rounded-xl overflow-hidden border border-border">
+      <main className="flex-1 p-4 pt-2">
+        <div className="rounded-xl overflow-hidden border border-border h-full">
           <iframe
             title="map-view"
-            src="https://www.openstreetmap.org/export/embed.html?layer=mapnik&zoom=12&marker=12.9716%2C77.5946"
-            className="w-full h-[70vh]"
+            src="https://www.google.com/maps?q=12.9716,77.5946&z=12&output=embed"
+            className="w-full h-full"
+            style={{ border: 0 }}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
           />
         </div>
       </main>
