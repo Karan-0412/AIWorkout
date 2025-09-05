@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { Search, Filter, MapPin, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { OfferCard } from "@/components/OfferCard";
 import { JoinOfferBottomSheet } from "@/components/JoinOfferBottomSheet";
 import { useThemeContext } from "@/components/ThemeProvider";
