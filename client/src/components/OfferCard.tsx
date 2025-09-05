@@ -4,7 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
 interface OfferCardProps {
@@ -32,7 +34,23 @@ interface OfferCardProps {
 
 export function OfferCard({ offer, onJoin }: OfferCardProps) {
   const [isLiked, setIsLiked] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const { toast } = useToast();
   const [, navigate] = useLocation();
+
+  const shareOffer = async () => {
+    const shareText = `${offer.title} • Split for ₹${offer.splitPrice} (was ₹${offer.originalPrice}). ${offer.productLink || ''}`.trim();
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: offer.title, text: shareText, url: offer.productLink });
+      } else {
+        await navigator.clipboard.writeText(shareText);
+        toast({ title: "Copied", description: "Offer details copied to clipboard" });
+      }
+    } catch (e) {
+      toast({ title: "Share canceled", description: "You can try again", variant: "destructive" as any });
+    }
+  };
 
   const getOfferTypeLabel = (type: string) => {
     switch (type) {
@@ -166,18 +184,45 @@ export function OfferCard({ offer, onJoin }: OfferCardProps) {
             >
               <MessageCircle className="w-4 h-4" />
             </Button>
+            <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="p-2.5"
+                  data-testid={`button-info-${offer.id}`}
+                >
+                  <Info className="w-4 h-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>{offer.title}</DialogTitle>
+                  <DialogDescription>
+                    <div className="mt-3 space-y-3">
+                      <img src={offer.images[0]} alt={offer.title} className="w-full h-40 object-cover rounded-md" />
+                      <p className="text-sm text-muted-foreground">{offer.description}</p>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-semibold text-primary">₹{offer.splitPrice}</span>
+                        <span className="line-through text-muted-foreground">₹{offer.originalPrice}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center"><MapPin className="w-3 h-3 mr-1" />{offer.location}</span>
+                        <span className="flex items-center"><Clock className="w-3 h-3 mr-1" />{offer.timeAgo}</span>
+                      </div>
+                      {offer.productLink && (
+                        <Button onClick={() => window.open(offer.productLink!, '_blank')} size="sm" className="w-full">Open Product</Button>
+                      )}
+                    </div>
+                  </DialogDescription>
+                </DialogHeader>
+              </DialogContent>
+            </Dialog>
             <Button
               variant="outline"
               size="sm"
               className="p-2.5"
-              data-testid={`button-info-${offer.id}`}
-            >
-              <Info className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="p-2.5"
+              onClick={shareOffer}
               data-testid={`button-share-${offer.id}`}
             >
               <Share2 className="w-4 h-4" />
