@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 export function Home() {
   const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const [selectedOffer, setSelectedOffer] = useState<any>(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   const { theme, toggleTheme } = useThemeContext();
@@ -104,7 +105,7 @@ export function Home() {
             <h1 className="text-xl font-bold text-primary" data-testid="text-app-title">OfferShare</h1>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="sm" className="p-2.5 rounded-full hover:bg-accent/10" data-testid="button-search">
+            <Button variant="ghost" size="sm" className="p-2.5 rounded-full hover:bg-accent/10" onClick={() => { searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => searchRef.current?.focus(), 250); }} data-testid="button-search">
               <Search className="w-4 h-4 text-muted-foreground" />
             </Button>
             <Button
@@ -157,6 +158,7 @@ export function Home() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
+              ref={searchRef}
               type="text"
               placeholder="Search offers..."
               value={searchQuery}
@@ -169,7 +171,7 @@ export function Home() {
 
         {/* Offers Feed */}
         <div className="px-4 space-y-6">
-          {offers.map((offer) => (
+          {(searchQuery.trim() ? offers.filter(o => [o.title, o.description, o.location].some(v => (v || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))) : offers).map((offer) => (
             <div key={offer.id} className="fade-in">
               <OfferCard
                 offer={offer}
@@ -177,6 +179,10 @@ export function Home() {
               />
             </div>
           ))}
+
+          {searchQuery.trim() && (offers.filter(o => [o.title, o.description, o.location].some(v => (v || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))).length === 0) && (
+            <p className="text-center text-sm text-muted-foreground py-8">No offers match your search.</p>
+          )}
 
           {/* Load More Button */}
           <div className="flex justify-center py-8">
