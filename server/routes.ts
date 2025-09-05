@@ -55,6 +55,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // API Routes
 
+  // Ensure user by Firebase UID
+  app.post("/api/users/ensure", async (req, res) => {
+    try {
+      const { firebaseUid, email, displayName, photoUrl } = req.body || {};
+      if (!firebaseUid || !email || !displayName) {
+        return res.status(400).json({ message: "Missing firebaseUid, email or displayName" });
+      }
+      let user = await storage.getUserByFirebaseUid(firebaseUid);
+      if (!user) {
+        user = await storage.createUser({ firebaseUid, email, displayName, photoUrl });
+      }
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to ensure user" });
+    }
+  });
+
   // User routes
   app.get("/api/users/:id", async (req, res) => {
     try {
