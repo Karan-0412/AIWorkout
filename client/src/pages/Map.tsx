@@ -6,7 +6,7 @@ export function Map() {
   const [, navigate] = useLocation();
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen pb-[calc(env(safe-area-inset-bottom)+88px)]">
+    <div className="max-w-md mx-auto bg-background min-h-screen pb-[calc(env(safe-area-inset-bottom)+88px)]" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <header
         className="sticky top-0 z-40 bg-background border-b border-border transition-theme"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
