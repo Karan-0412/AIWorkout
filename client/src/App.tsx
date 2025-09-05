@@ -36,14 +36,7 @@ function AppContent() {
         <Route path="/create" component={CreateOffer} />
         <Route path="/chats" component={Chat} />
         <Route path="/chat/:id" component={Chat} />
-        <Route path="/wallet">
-          <div className="max-w-md mx-auto bg-background min-h-screen flex items-center justify-center pb-20">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold mb-4">Wallet</h2>
-              <p className="text-muted-foreground">Coming soon...</p>
-            </div>
-          </div>
-        </Route>
+        <Route path="/map" component={Map} />
         <Route path="/profile" component={Profile} />
         <Route component={NotFound} />
       </Switch>
