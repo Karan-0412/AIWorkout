@@ -11,6 +11,7 @@ import { CreateOffer } from "@/pages/CreateOffer";
 import { Chat } from "@/pages/Chat";
 import { Profile } from "@/pages/Profile";
 import { Auth } from "@/pages/Auth";
+import Map from "@/pages/Map";
 import NotFound from "@/pages/not-found";
 
 function AppContent() {
