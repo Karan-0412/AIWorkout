@@ -131,7 +131,7 @@ export function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="pb-20">
+      <main className="pb-[calc(env(safe-area-inset-bottom)+88px)]">
         {/* Feed Header */}
         <div className="p-4 space-y-5">
           <div className="flex items-center justify-between">
