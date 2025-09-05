@@ -212,8 +212,15 @@ export function Home() {
             </div>
           ))}
 
-          {searchQuery.trim() && (offers.filter(o => [o.title, o.description, o.location].some(v => (v || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))).length === 0) && (
-            <p className="text-center text-sm text-muted-foreground py-8">No offers match your search.</p>
+          {(searchQuery.trim() || nearEnabled) && (
+            (searchQuery.trim() ? offers.filter(o => [o.title, o.description, o.location].some(v => (v || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))) : offers)
+              .filter(o => {
+                if (!nearEnabled) return true;
+                const km = parseFloat((o.distance || "").toString());
+                return !isNaN(km) && km <= nearKm;
+              }).length === 0
+          ) && (
+            <p className="text-center text-sm text-muted-foreground py-8">No offers in this range.</p>
           )}
 
           {/* Load More Button */}
