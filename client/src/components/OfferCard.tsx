@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Heart, Info, Share2, MapPin, Clock, Star, ExternalLink } from "lucide-react";
+import { Heart, Info, Share2, MapPin, Clock, Star, ExternalLink, MessageCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useLocation } from "wouter";
 
 interface OfferCardProps {
   offer: {
