@@ -14,7 +14,7 @@ export function BottomNavigation() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-card/95 backdrop-blur-sm border-t border-border z-50 transition-theme shadow-lg">
+    <nav className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-card/95 backdrop-blur-sm border-t border-border z-50 transition-theme shadow-lg" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <div className="flex items-center justify-around py-3">
         {navItems.map(({ icon: Icon, label, path, testId }) => (
           <button
