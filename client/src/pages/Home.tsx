@@ -144,9 +144,10 @@ export function Home() {
                 Filter
               </Button>
               <Button
-                variant="secondary"
+                variant={nearEnabled ? "default" : "secondary"}
                 size="sm"
-                className="px-3 py-1.5 text-sm rounded-full hover:bg-accent/20 transition-colors"
+                className="px-3 py-1.5 text-sm rounded-full transition-colors"
+                onClick={() => setNearOpen((v) => !v)}
                 data-testid="button-near-me"
               >
                 <MapPin className="w-3 h-3 mr-1" />
