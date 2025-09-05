@@ -98,7 +98,7 @@ export function Home() {
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative transition-theme">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border transition-theme">
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border transition-theme" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center space-x-3">
             <h1 className="text-xl font-bold text-primary" data-testid="text-app-title">OfferShare</h1>
