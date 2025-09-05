@@ -13,6 +13,7 @@ import { Profile } from "@/pages/Profile";
 import { Auth } from "@/pages/Auth";
 import Map from "@/pages/Map";
 import NotFound from "@/pages/not-found";
+import { useLocation } from "wouter";
 
 function AppContent() {
   const { user, loading } = useAuth();
