@@ -41,7 +41,18 @@ export function OfferCard({ offer, onJoin }: OfferCardProps) {
 
   const shareText = `${offer.title} • Split for ₹${offer.splitPrice} (was ₹${offer.originalPrice}).`.trim();
   const shareUrl = offer.productLink || window.location.href;
-  const shareOffer = () => setShareOpen(true);
+  const shareOffer = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: offer.title, text: shareText, url: shareUrl });
+      } else {
+        setShareOpen(true);
+      }
+    } catch (e) {
+      // If user cancels or share not available, show fallback panel
+      setShareOpen(true);
+    }
+  };
 
   const openUrl = (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");
