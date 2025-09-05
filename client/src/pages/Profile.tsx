@@ -44,7 +44,7 @@ export function Profile() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen pb-[calc(env(safe-area-inset-bottom)+88px)]">
+    <div className="max-w-md mx-auto bg-background min-h-screen pb-[calc(env(safe-area-inset-bottom)+88px)]" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="p-4 space-y-6">
         {/* Profile Header */}
         <Card>
