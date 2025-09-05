@@ -35,21 +35,38 @@ interface OfferCardProps {
 export function OfferCard({ offer, onJoin }: OfferCardProps) {
   const [isLiked, setIsLiked] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const { toast } = useToast();
   const [, navigate] = useLocation();
 
-  const shareOffer = async () => {
-    const shareText = `${offer.title} • Split for ₹${offer.splitPrice} (was ₹${offer.originalPrice}). ${offer.productLink || ''}`.trim();
+  const shareText = `${offer.title} • Split for ₹${offer.splitPrice} (was ₹${offer.originalPrice}).`.trim();
+  const shareUrl = offer.productLink || window.location.href;
+  const shareOffer = () => setShareOpen(true);
+
+  const openUrl = (url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer");
+    setShareOpen(false);
+  };
+
+  const onCopy = async () => {
     try {
-      if (navigator.share) {
-        await navigator.share({ title: offer.title, text: shareText, url: offer.productLink });
-      } else {
-        await navigator.clipboard.writeText(shareText);
-        toast({ title: "Copied", description: "Offer details copied to clipboard" });
-      }
-    } catch (e) {
-      toast({ title: "Share canceled", description: "You can try again", variant: "destructive" as any });
+      await navigator.clipboard.writeText(`${shareText} ${shareUrl}`.trim());
+      toast({ title: "Copied", description: "Offer link copied" });
+      setShareOpen(false);
+    } catch {
+      toast({ title: "Copy failed", variant: "destructive" as any });
     }
+  };
+
+  const onSystemShare = async () => {
+    if ((navigator as any).share) {
+      try {
+        await (navigator as any).share({ title: offer.title, text: shareText, url: shareUrl });
+      } catch {}
+    } else {
+      onCopy();
+    }
+    setShareOpen(false);
   };
 
   const getOfferTypeLabel = (type: string) => {
@@ -227,6 +244,24 @@ export function OfferCard({ offer, onJoin }: OfferCardProps) {
             >
               <Share2 className="w-4 h-4" />
             </Button>
+            <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Share offer</DialogTitle>
+                  <DialogDescription>
+                    Choose where to share. We’ll include the product link when available.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid grid-cols-3 gap-3 pt-2">
+                  <Button variant="outline" onClick={() => openUrl(`https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`)}>WhatsApp</Button>
+                  <Button variant="outline" onClick={() => openUrl(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`)}>Telegram</Button>
+                  <Button variant="outline" onClick={() => openUrl(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`)}>X / Twitter</Button>
+                  <Button variant="outline" onClick={() => openUrl(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`)}>Facebook</Button>
+                  <Button variant="outline" onClick={onCopy}>Copy link</Button>
+                  <Button onClick={onSystemShare}>System share</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </CardContent>
