@@ -15,6 +15,9 @@ export function Home() {
   const searchRef = useRef<HTMLInputElement>(null);
   const [selectedOffer, setSelectedOffer] = useState<any>(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
+  const [nearOpen, setNearOpen] = useState(false);
+  const [nearKm, setNearKm] = useState<number>(5);
+  const [nearEnabled, setNearEnabled] = useState(false);
   const { theme, toggleTheme } = useThemeContext();
   const { toast } = useToast();
 
