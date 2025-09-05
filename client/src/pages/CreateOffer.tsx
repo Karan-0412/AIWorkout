@@ -68,9 +68,9 @@ export function CreateOffer() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen">
+    <div className="max-w-md mx-auto bg-background min-h-screen pb-[calc(env(safe-area-inset-bottom)+88px)]">
       {/* Header */}
-      <header className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border p-4 z-40">
+      <header className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border p-4 z-40" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"
