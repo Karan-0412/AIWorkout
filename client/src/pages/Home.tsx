@@ -105,9 +105,6 @@ export function Home() {
             <h1 className="text-xl font-bold text-primary" data-testid="text-app-title">OfferShare</h1>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="sm" className="p-2.5 rounded-full hover:bg-accent/10" onClick={() => { searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => searchRef.current?.focus(), 250); }} data-testid="button-search">
-              <Search className="w-4 h-4 text-muted-foreground" />
-            </Button>
             <Button
               variant="outline"
               size="sm"
