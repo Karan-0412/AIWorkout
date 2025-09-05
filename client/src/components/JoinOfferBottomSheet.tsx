@@ -33,7 +33,7 @@ export function JoinOfferBottomSheet({ isOpen, onClose, offer, onConfirm }: Join
   return (
     <div className="fixed inset-0 z-50" data-testid="join-bottom-sheet">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-card dark:bg-card rounded-t-2xl p-6 slide-up shadow-2xl border-t border-border">
+      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-card dark:bg-card rounded-t-2xl p-6 slide-up shadow-2xl border-t border-border" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}>
         <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mb-6" />
         
         <div className="flex items-center justify-between mb-4">
