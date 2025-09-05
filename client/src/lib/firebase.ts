@@ -10,9 +10,6 @@ const firebaseConfig = {
   storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebasestorage.app`,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
-console.log("API Key:", import.meta.env.VITE_FIREBASE_API_KEY);
-console.log("Project ID:", import.meta.env.VITE_FIREBASE_PROJECT_ID);
-console.log("App ID:", import.meta.env.VITE_FIREBASE_APP_ID);
 
 
 const app = initializeApp(firebaseConfig);
