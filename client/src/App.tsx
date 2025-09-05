@@ -17,6 +17,7 @@ import { useLocation } from "wouter";
 
 function AppContent() {
   const { user, loading } = useAuth();
+  const [location] = useLocation();
 
   if (loading) {
     return (
