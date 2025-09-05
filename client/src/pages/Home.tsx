@@ -196,7 +196,14 @@ export function Home() {
 
         {/* Offers Feed */}
         <div className="px-4 space-y-6">
-          {(searchQuery.trim() ? offers.filter(o => [o.title, o.description, o.location].some(v => (v || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))) : offers).map((offer) => (
+          {(
+            (searchQuery.trim() ? offers.filter(o => [o.title, o.description, o.location].some(v => (v || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))) : offers)
+              .filter(o => {
+                if (!nearEnabled) return true;
+                const km = parseFloat((o.distance || "").toString());
+                return !isNaN(km) && km <= nearKm;
+              })
+          ).map((offer) => (
             <div key={offer.id} className="fade-in">
               <OfferCard
                 offer={offer}
