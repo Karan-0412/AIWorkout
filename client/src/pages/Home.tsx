@@ -171,6 +171,29 @@ export function Home() {
           </div>
         </div>
 
+        {/* Near Me Panel */}
+        {nearOpen && (
+          <div className="px-4">
+            <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium">Show offers within {nearKm} km</p>
+                <Button variant="ghost" size="sm" onClick={() => setNearOpen(false)}>Close</Button>
+              </div>
+              <div className="py-2">
+                <Slider value={[nearKm]} min={1} max={25} step={1} onValueChange={(v) => setNearKm(v[0] as number)} />
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>1 km</span>
+                  <span>25 km</span>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <Button className="flex-1" onClick={() => { setNearEnabled(true); setNearOpen(false); }}>Apply</Button>
+                <Button variant="outline" className="flex-1" onClick={() => { setNearEnabled(false); setNearOpen(false); }}>Reset</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Offers Feed */}
         <div className="px-4 space-y-6">
           {(searchQuery.trim() ? offers.filter(o => [o.title, o.description, o.location].some(v => (v || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))) : offers).map((offer) => (
