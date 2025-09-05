@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Search, Filter, MapPin, Bell, Sun, Moon } from "lucide-react";
+import { Search, Filter, MapPin, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OfferCard } from "@/components/OfferCard";
@@ -119,12 +119,6 @@ export function Home() {
               ) : (
                 <Moon className="w-4 h-4 text-accent" />
               )}
-            </Button>
-            <Button variant="ghost" size="sm" className="p-2.5 rounded-full relative hover:bg-accent/10" data-testid="button-notifications">
-              <Bell className="w-4 h-4 text-muted-foreground" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-xs text-destructive-foreground rounded-full flex items-center justify-center">
-                3
-              </span>
             </Button>
           </div>
         </div>
