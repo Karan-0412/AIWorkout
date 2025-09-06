@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
-import { Search, Filter, MapPin, Bell, Sun, Moon } from "lucide-react";
+import { Search, Filter, MapPin, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { OfferCard } from "@/components/OfferCard";
 import { JoinOfferBottomSheet } from "@/components/JoinOfferBottomSheet";
 import { useThemeContext } from "@/components/ThemeProvider";
@@ -11,8 +12,12 @@ import { useToast } from "@/hooks/use-toast";
 export function Home() {
   const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const [selectedOffer, setSelectedOffer] = useState<any>(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
+  const [nearOpen, setNearOpen] = useState(false);
+  const [nearKm, setNearKm] = useState<number>(5);
+  const [nearEnabled, setNearEnabled] = useState(false);
   const { theme, toggleTheme } = useThemeContext();
   const { toast } = useToast();
 
@@ -98,15 +103,12 @@ export function Home() {
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative transition-theme">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border transition-theme">
+      <header className="sticky top-0 z-40 bg-background border-b border-border transition-theme" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center space-x-3">
             <h1 className="text-xl font-bold text-primary" data-testid="text-app-title">OfferShare</h1>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="sm" className="p-2.5 rounded-full hover:bg-accent/10" data-testid="button-search">
-              <Search className="w-4 h-4 text-muted-foreground" />
-            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -120,18 +122,13 @@ export function Home() {
                 <Moon className="w-4 h-4 text-accent" />
               )}
             </Button>
-            <Button variant="ghost" size="sm" className="p-2.5 rounded-full relative hover:bg-accent/10" data-testid="button-notifications">
-              <Bell className="w-4 h-4 text-muted-foreground" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-xs text-destructive-foreground rounded-full flex items-center justify-center">
-                3
-              </span>
-            </Button>
           </div>
         </div>
       </header>
 
+
       {/* Main Content */}
-      <main className="pb-20">
+      <main className="pb-[calc(env(safe-area-inset-bottom)+88px)]">
         {/* Feed Header */}
         <div className="p-4 space-y-5">
           <div className="flex items-center justify-between">
@@ -147,9 +144,10 @@ export function Home() {
                 Filter
               </Button>
               <Button
-                variant="secondary"
+                variant={nearEnabled ? "default" : "secondary"}
                 size="sm"
-                className="px-3 py-1.5 text-sm rounded-full hover:bg-accent/20 transition-colors"
+                className="px-3 py-1.5 text-sm rounded-full transition-colors"
+                onClick={() => setNearOpen((v) => !v)}
                 data-testid="button-near-me"
               >
                 <MapPin className="w-3 h-3 mr-1" />
@@ -162,6 +160,7 @@ export function Home() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
+              ref={searchRef}
               type="text"
               placeholder="Search offers..."
               value={searchQuery}
@@ -172,9 +171,39 @@ export function Home() {
           </div>
         </div>
 
+        {/* Near Me Panel */}
+        {nearOpen && (
+          <div className="px-4">
+            <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium">Show offers within {nearKm} km</p>
+                <Button variant="ghost" size="sm" onClick={() => setNearOpen(false)}>Close</Button>
+              </div>
+              <div className="py-2">
+                <Slider value={[nearKm]} min={1} max={25} step={1} onValueChange={(v) => setNearKm(v[0] as number)} />
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>1 km</span>
+                  <span>25 km</span>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <Button className="flex-1" onClick={() => { setNearEnabled(true); setNearOpen(false); }}>Apply</Button>
+                <Button variant="outline" className="flex-1" onClick={() => { setNearEnabled(false); setNearOpen(false); }}>Reset</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Offers Feed */}
         <div className="px-4 space-y-6">
-          {offers.map((offer) => (
+          {(
+            (searchQuery.trim() ? offers.filter(o => [o.title, o.description, o.location].some(v => (v || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))) : offers)
+              .filter(o => {
+                if (!nearEnabled) return true;
+                const km = parseFloat((o.distance || "").toString());
+                return !isNaN(km) && km <= nearKm;
+              })
+          ).map((offer) => (
             <div key={offer.id} className="fade-in">
               <OfferCard
                 offer={offer}
@@ -182,6 +211,17 @@ export function Home() {
               />
             </div>
           ))}
+
+          {(searchQuery.trim() || nearEnabled) && (
+            (searchQuery.trim() ? offers.filter(o => [o.title, o.description, o.location].some(v => (v || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))) : offers)
+              .filter(o => {
+                if (!nearEnabled) return true;
+                const km = parseFloat((o.distance || "").toString());
+                return !isNaN(km) && km <= nearKm;
+              }).length === 0
+          ) && (
+            <p className="text-center text-sm text-muted-foreground py-8">No offers in this range.</p>
+          )}
 
           {/* Load More Button */}
           <div className="flex justify-center py-8">

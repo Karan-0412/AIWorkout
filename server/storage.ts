@@ -2,6 +2,7 @@ import { type User, type InsertUser, type Offer, type InsertOffer, type JoinRequ
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { eq, desc, and, or, not } from "drizzle-orm";
+import { nanoid } from "nanoid";
 
 export interface IStorage {
   // User operations
@@ -36,8 +37,8 @@ export interface IStorage {
   getUserRatings(userId: string): Promise<Rating[]>;
 }
 
-const sql = neon(process.env.DATABASE_URL!);
-const db = drizzle(sql);
+const hasDb = !!process.env.DATABASE_URL;
+const db = hasDb ? drizzle(neon(process.env.DATABASE_URL!)) : null as any;
 
 export class DatabaseStorage implements IStorage {
   // User operations

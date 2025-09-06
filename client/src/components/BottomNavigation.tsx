@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Home, Plus, MessageCircle, Wallet, User } from "lucide-react";
+import { Home, Plus, MessageCircle, MapPin, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function BottomNavigation() {
@@ -8,13 +8,13 @@ export function BottomNavigation() {
   const navItems = [
     { icon: Home, label: "Home", path: "/", testId: "nav-home" },
     { icon: Plus, label: "Post", path: "/create", testId: "nav-post" },
+    { icon: MapPin, label: "Map", path: "/map", testId: "nav-map" },
     { icon: MessageCircle, label: "Chats", path: "/chats", testId: "nav-chats" },
-    { icon: Wallet, label: "Wallet", path: "/wallet", testId: "nav-wallet" },
     { icon: User, label: "Profile", path: "/profile", testId: "nav-profile" },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-card/95 backdrop-blur-sm border-t border-border z-50 transition-theme shadow-lg">
+    <nav className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-card border-t border-border z-50 transition-theme shadow-lg" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <div className="flex items-center justify-around py-3">
         {navItems.map(({ icon: Icon, label, path, testId }) => (
           <button
