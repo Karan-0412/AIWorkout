@@ -14,7 +14,6 @@ import { Profile } from "@/pages/Profile";
 import { Auth } from "@/pages/Auth";
 import Map from "@/pages/Map";
 import NotFound from "@/pages/not-found";
-import Splash from "@/components/Splash";
 import RequestDetails from "@/pages/RequestDetails";
 
 function AppContent() {
@@ -50,20 +49,6 @@ function AppContent() {
 }
 
 function App() {
-  const [showSplash, setShowSplash] = useState(true);
-  useEffect(() => {
-    const t = setTimeout(() => setShowSplash(false), 2200);
-    return () => clearTimeout(t);
-  }, []);
-
-  if (showSplash) {
-    return (
-      <ThemeProvider>
-        <Splash />
-      </ThemeProvider>
-    );
-  }
-
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
