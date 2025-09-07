@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useRoute } from "wouter";
-import { ArrowLeft, Phone, Paperclip, Send } from "lucide-react";
+import { ArrowLeft, Phone, Paperclip, Send, Check, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
 
 type ChatItem = { id: string; lastMessage?: string; lastMessageAt?: string };
-type Message = { id: string; chatId: string; senderId: string; content: string; createdAt?: string; isRead?: boolean; messageType?: 'text' | 'image' | 'file'; fileName?: string };
+type Message = { id: string; chatId: string; senderId: string; content: string; createdAt?: string; isRead?: boolean; messageType?: 'text' | 'image' | 'file'; fileName?: string; status?: 'sent' | 'delivered' | 'read' };
 
 async function ensureBackendUser(firebaseUser: any) {
   const res = await fetch("/api/users/ensure", {
@@ -107,22 +107,23 @@ function ChatRoom({ chatId }: { chatId: string }) {
         setBackendUser(u);
         const res = await fetch(`/api/chats/${chatId}/messages`);
         if (res.ok) {
-          setMessages(await res.json());
+          const serverMsgs: Message[] = await res.json();
+          setMessages(serverMsgs.map(m => ({ ...m, status: m.isRead ? 'read' : 'delivered' })));
           fetch(`/api/chats/${chatId}/mark-read`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: u.id }) });
         } else {
           setMessages([
             { id: "m1", chatId, senderId: "other", content: "Hi! I'm interested in splitting this deal." },
-            { id: "m2", chatId, senderId: "me", content: "Great! Let's coordinate." },
+            { id: "m2", chatId, senderId: "me", content: "Great! Let's coordinate.", status: 'read' },
             { id: "m3", chatId, senderId: "other", content: "I'm free this evening around 6 PM." },
-            { id: "m4", chatId, senderId: "me", content: "Perfect, see you at Koramangala Starbucks." },
+            { id: "m4", chatId, senderId: "me", content: "Perfect, see you at Koramangala Starbucks.", status: 'delivered' },
           ]);
         }
       } catch {
         setMessages([
           { id: "m1", chatId, senderId: "other", content: "Hi! I'm interested in splitting this deal." },
-          { id: "m2", chatId, senderId: "me", content: "Great! Let's coordinate." },
+          { id: "m2", chatId, senderId: "me", content: "Great! Let's coordinate.", status: 'read' },
           { id: "m3", chatId, senderId: "other", content: "I'm free this evening around 6 PM." },
-          { id: "m4", chatId, senderId: "me", content: "Perfect, see you at Koramangala Starbucks." },
+          { id: "m4", chatId, senderId: "me", content: "Perfect, see you at Koramangala Starbucks.", status: 'delivered' },
         ]);
       }
     })();
@@ -147,7 +148,8 @@ function ChatRoom({ chatId }: { chatId: string }) {
     setMessage("");
 
     const sendOne = async (payload: { content: string; messageType?: 'text'|'image'|'file'; fileName?: string }) => {
-      const local: Message = { id: Math.random().toString(), chatId, senderId: backendUser?.id || 'me', content: payload.content, messageType: payload.messageType, fileName: payload.fileName };
+      const id = Math.random().toString();
+      const local: Message = { id, chatId, senderId: backendUser?.id || 'me', content: payload.content, messageType: payload.messageType, fileName: payload.fileName, status: 'sent' };
       if (backendUser) {
         const socketPayload = { type: 'chat_message', chatId, senderId: backendUser.id, content: payload.content, messageType: payload.messageType } as any;
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -159,6 +161,9 @@ function ChatRoom({ chatId }: { chatId: string }) {
         }
       }
       setMessages((m) => [...m, local]);
+      // Simulate delivered and read progression
+      setTimeout(() => setMessages(m => m.map(mm => mm.id === id ? { ...mm, status: 'delivered' } : mm)), 1000);
+      setTimeout(() => setMessages(m => m.map(mm => mm.id === id ? { ...mm, status: 'read' } : mm)), 4000);
     };
 
     if (text) {
@@ -204,7 +209,7 @@ function ChatRoom({ chatId }: { chatId: string }) {
                 <Avatar className="w-8 h-8 shrink-0"><AvatarFallback>U</AvatarFallback></Avatar>
               )}
               <div className={`max-w-[70%] ${isMe ? 'items-end text-right' : ''}`}>
-                <div className={`rounded-2xl shadow ${isMe ? 'bg-accent text-accent-foreground rounded-br-sm' : 'bg-card border border-border rounded-bl-sm'}`}>
+                <div className={`relative rounded-2xl shadow ${isMe ? 'bg-accent text-accent-foreground rounded-br-sm' : 'bg-card border border-border rounded-bl-sm'}`}>
                   {isImage ? (
                     <img src={msg.content} alt={msg.fileName || 'image'} className={`rounded-2xl ${isMe ? 'rounded-br-sm' : 'rounded-bl-sm'} max-h-64 object-cover ${isMe ? 'ring-2 ring-accent' : ''}`} />
                   ) : isFile ? (
@@ -214,8 +219,19 @@ function ChatRoom({ chatId }: { chatId: string }) {
                   ) : (
                     <p className="px-4 py-3 text-sm leading-relaxed">{msg.content}</p>
                   )}
+                  {isMe && (
+                    <span className="absolute -bottom-4 right-1 flex items-center gap-0.5 text-[10px]">
+                      {msg.status === 'read' ? (
+                        <CheckCheck className="w-3 h-3 text-accent" />
+                      ) : msg.status === 'delivered' ? (
+                        <CheckCheck className="w-3 h-3 text-muted-foreground" />
+                      ) : (
+                        <Check className="w-3 h-3 text-muted-foreground" />
+                      )}
+                    </span>
+                  )}
                 </div>
-                <div className="mt-1 text-[10px] text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                <div className="mt-3 text-[10px] text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
               </div>
             </div>
           );
