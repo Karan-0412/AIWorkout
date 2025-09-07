@@ -59,7 +59,7 @@ export function CreateRequest() {
       const res = await fetch('/api/requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, type, category, imageUrl, latitude: parseFloat(latitude), longitude: parseFloat(longitude), userId: 'anonymous' }),
+        body: JSON.stringify({ title, type, category, imageUrl, latitude: parseFloat(latitude), longitude: parseFloat(longitude) }),
       });
       if (!res.ok) throw new Error('Failed to create');
       const created = await res.json();
