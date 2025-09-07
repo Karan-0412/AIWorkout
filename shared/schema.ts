@@ -51,7 +51,7 @@ export const joinRequests = pgTable("join_requests", {
 // Map requests table for user-posted requests to be shown on the map
 export const requests = pgTable("requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: varchar("user_id"),
   title: text("title").notNull(),
   type: text("type").notNull(), // "service", "product", "help"
   category: text("category").notNull(), // e.g., "Food", "Electronics", "Fitness", "Other"
