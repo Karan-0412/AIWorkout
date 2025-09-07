@@ -60,6 +60,7 @@ function ChatsList() {
       } catch {
         setChats([
           { id: "sample-1", lastMessage: "Hey! Interested in the offer?", lastMessageAt: new Date().toISOString() },
+          { id: "sample-2", lastMessage: "Can we meet near MG Road?", lastMessageAt: new Date(Date.now() - 3600_000).toISOString() },
         ]);
       }
     })();
