@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Offer, type InsertOffer, type JoinRequest, type InsertJoinRequest, type Chat, type Message, type InsertMessage, type Rating, type InsertRating, users, offers, joinRequests, chats, messages, ratings } from "@shared/schema";
+import { type User, type InsertUser, type Offer, type InsertOffer, type JoinRequest, type InsertJoinRequest, type Chat, type Message, type InsertMessage, type Rating, type InsertRating, type Request as MapRequest, type InsertRequest, users, offers, joinRequests, chats, messages, ratings, requests } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { eq, desc, and, or, not } from "drizzle-orm";
