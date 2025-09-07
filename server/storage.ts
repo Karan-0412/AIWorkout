@@ -84,15 +84,15 @@ export class DatabaseStorage implements IStorage {
 
   async getOffers(filters: { location?: string; status?: string; limit?: number } = {}): Promise<Offer[]> {
     let query = db.select().from(offers).orderBy(desc(offers.createdAt));
-    
+
     if (filters.status) {
       query = query.where(eq(offers.status, filters.status));
     }
-    
+
     if (filters.limit) {
       query = query.limit(filters.limit);
     }
-    
+
     return await query;
   }
 
@@ -103,6 +103,21 @@ export class DatabaseStorage implements IStorage {
       .where(eq(offers.id, id))
       .returning();
     return result[0];
+  }
+
+  // Map Request operations
+  async createRequest(insertRequest: InsertRequest): Promise<MapRequest> {
+    const result = await db.insert(requests).values(insertRequest).returning();
+    return result[0];
+  }
+
+  async getRequest(id: string): Promise<MapRequest | undefined> {
+    const result = await db.select().from(requests).where(eq(requests.id, id));
+    return result[0];
+  }
+
+  async getRequests(): Promise<MapRequest[]> {
+    return await db.select().from(requests).orderBy(desc(requests.createdAt));
   }
 
   // Join request operations
