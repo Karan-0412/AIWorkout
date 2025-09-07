@@ -136,3 +136,5 @@ export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Rating = typeof ratings.$inferSelect;
 export type InsertRating = z.infer<typeof insertRatingSchema>;
+export type Request = typeof requests.$inferSelect;
+export type InsertRequest = z.infer<typeof insertRequestSchema>;
