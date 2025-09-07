@@ -79,7 +79,7 @@ export function Map() {
           mapContainerStyle={{ width: "100%", height: "100%" }}
           options={options}
         >
-          {(requests || []).map((r) => {
+          {items.map((r) => {
             const lat = typeof r.latitude === "string" ? parseFloat(r.latitude) : (r.latitude as number);
             const lng = typeof r.longitude === "string" ? parseFloat(r.longitude) : (r.longitude as number);
             if (isNaN(lat) || isNaN(lng)) return null;
