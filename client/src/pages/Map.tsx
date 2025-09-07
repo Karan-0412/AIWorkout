@@ -41,7 +41,15 @@ export function Map() {
       if (!res.ok) throw new Error("Failed to load requests");
       return res.json();
     },
+    retry: 0,
   });
+
+  const fallbackRequests: RequestItem[] = [
+    { id: "r1", title: "Need help moving a sofa", type: "help", category: "Other", imageUrl: "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?w=800&q=80", latitude: 12.975, longitude: 77.591 },
+    { id: "r2", title: "Looking for gym partner", type: "service", category: "Fitness", imageUrl: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=80", latitude: 12.969, longitude: 77.602 },
+    { id: "r3", title: "Split a pizza", type: "product", category: "Food", imageUrl: "https://images.unsplash.com/photo-1548365328-9f547fb0953c?w=800&q=80", latitude: 12.965, longitude: 77.59 },
+  ];
+  const items = (requests && requests.length ? requests : fallbackRequests);
 
   const center = useMemo<google.maps.LatLngLiteral>(() => ({ lat: 12.9716, lng: 77.5946 }), []);
   const options = useMemo<google.maps.MapOptions>(
