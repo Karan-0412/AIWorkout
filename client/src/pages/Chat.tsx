@@ -198,7 +198,7 @@ function ChatRoom({ chatId }: { chatId: string }) {
         </div>
       </header>
 
-      <div className="flex-1 p-3 space-y-4 overflow-y-auto custom-scrollbar bg-[radial-gradient(ellipse_at_top,theme(colors.muted)/30_0%,transparent_60%)]">
+      <div className="flex-1 p-3 space-y-4 overflow-y-auto custom-scrollbar bg-background">
         {messages.map((msg) => {
           const isMe = msg.senderId === (backendUser?.id || 'me');
           const isImage = msg.messageType === 'image' || msg.content.startsWith('data:image/');
@@ -209,9 +209,9 @@ function ChatRoom({ chatId }: { chatId: string }) {
                 <Avatar className="w-8 h-8 shrink-0"><AvatarFallback>U</AvatarFallback></Avatar>
               )}
               <div className={`max-w-[70%] ${isMe ? 'items-end text-right' : ''}`}>
-                <div className={`relative rounded-2xl shadow ${isMe ? 'bg-accent text-accent-foreground rounded-br-sm' : 'bg-card border border-border rounded-bl-sm'}`}>
+                <div className={`relative rounded-2xl shadow ${isMe ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-card border border-border rounded-bl-sm'}`}>
                   {isImage ? (
-                    <img src={msg.content} alt={msg.fileName || 'image'} className={`rounded-2xl ${isMe ? 'rounded-br-sm' : 'rounded-bl-sm'} max-h-64 object-cover ${isMe ? 'ring-2 ring-accent' : ''}`} />
+                    <img src={msg.content} alt={msg.fileName || 'image'} className={`rounded-2xl ${isMe ? 'rounded-br-sm' : 'rounded-bl-sm'} max-h-64 object-cover ${isMe ? 'ring-2 ring-primary' : ''}`} />
                   ) : isFile ? (
                     <a href={msg.content} download={msg.fileName || 'file'} className="block px-4 py-3 text-sm underline underline-offset-2">
                       {msg.fileName || 'Attachment'}
@@ -222,7 +222,7 @@ function ChatRoom({ chatId }: { chatId: string }) {
                   {isMe && (
                     <span className="absolute -bottom-4 right-1 flex items-center gap-0.5 text-[10px]">
                       {msg.status === 'read' ? (
-                        <CheckCheck className="w-3 h-3 text-accent" />
+                        <CheckCheck className="w-3 h-3 text-primary" />
                       ) : msg.status === 'delivered' ? (
                         <CheckCheck className="w-3 h-3 text-muted-foreground" />
                       ) : (
