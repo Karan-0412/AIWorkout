@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Camera, X, MapPin } from "lucide-react";
+import { ArrowLeft, Camera, X, MapPin, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,9 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/lib/supabase";
 
 export function CreateOffer() {
   const [, navigate] = useLocation();
+  const [activeTab, setActiveTab] = useState<"offer" | "request">("offer");
   const [formData, setFormData] = useState({
     title: "",
     originalPrice: "",
@@ -21,6 +24,15 @@ export function CreateOffer() {
   });
   const [images, setImages] = useState<string[]>([]);
   const { toast } = useToast();
+
+  // Request form state
+  const [reqTitle, setReqTitle] = useState("");
+  const [reqType, setReqType] = useState(""); // service | product | help
+  const [reqCategory, setReqCategory] = useState("");
+  const [reqImageFile, setReqImageFile] = useState<File | null>(null);
+  const [reqLatitude, setReqLatitude] = useState<string>("");
+  const [reqLongitude, setReqLongitude] = useState<string>("");
+  const [uploading, setUploading] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -49,22 +61,64 @@ export function CreateOffer() {
     }
   };
 
-  const handlePublish = () => {
+  const handlePublishOffer = () => {
     if (!formData.title || !formData.originalPrice || !formData.offerType) {
-      toast({
-        title: "Missing information",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      });
+      toast({ title: "Missing information", description: "Please fill in all required fields.", variant: "destructive" });
       return;
     }
-
-    // In production, this would create the offer in Firebase
-    toast({
-      title: "Offer published!",
-      description: "Your offer is now live and users can join.",
-    });
+    toast({ title: "Offer published!", description: "Your offer is now live and users can join." });
     navigate("/");
+  };
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) {
+      toast({ title: "Location not supported", variant: "destructive" });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setReqLatitude(String(pos.coords.latitude));
+        setReqLongitude(String(pos.coords.longitude));
+      },
+      () => toast({ title: "Failed to get location", variant: "destructive" })
+    );
+  };
+
+  const uploadRequestImage = async (): Promise<string | undefined> => {
+    if (!reqImageFile) return undefined;
+    if (!supabase) {
+      toast({ title: "Supabase not configured", description: "Connect Supabase and set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.", variant: "destructive" });
+      throw new Error("Supabase not configured");
+    }
+    setUploading(true);
+    const ext = reqImageFile.name.split(".").pop();
+    const path = `requests/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from("requests").upload(path, reqImageFile, { cacheControl: "3600", upsert: false });
+    if (error) throw error;
+    const { data } = supabase.storage.from("requests").getPublicUrl(path);
+    setUploading(false);
+    return data.publicUrl;
+  };
+
+  const handlePublishRequest = async () => {
+    if (!reqTitle || !reqType || !reqCategory || !reqLatitude || !reqLongitude) {
+      toast({ title: "Missing information", description: "Please fill in all required fields.", variant: "destructive" });
+      return;
+    }
+    try {
+      const imageUrl = await uploadRequestImage();
+      const res = await fetch("/api/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: reqTitle, type: reqType, category: reqCategory, imageUrl, latitude: parseFloat(reqLatitude), longitude: parseFloat(reqLongitude) }),
+      });
+      if (!res.ok) throw new Error("Failed to create request");
+      const created = await res.json();
+      toast({ title: "Request published!" });
+      navigate(`/requests/${created.id}`);
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Failed to create request", variant: "destructive" });
+    }
   };
 
   return (
@@ -82,18 +136,26 @@ export function CreateOffer() {
           </Button>
           <h2 className="text-lg font-semibold" data-testid="text-create-title">Create Offer</h2>
           <Button
-            onClick={handlePublish}
+            onClick={() => (activeTab === "offer" ? handlePublishOffer() : handlePublishRequest())}
             className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
             data-testid="button-publish"
+            disabled={activeTab === "request" && uploading}
           >
-            Publish
+            {activeTab === "request" && uploading ? "Uploading..." : "Publish"}
           </Button>
         </div>
       </header>
 
       <div className="p-4 space-y-6">
-        {/* Product Images */}
-        <div>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="offer">Offer</TabsTrigger>
+            <TabsTrigger value="request">Request</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="offer" className="space-y-6">
+            {/* Product Images */}
+            <div>
           <Label className="text-sm font-medium mb-3 block">Product Images</Label>
           <div className="grid grid-cols-3 gap-3">
             <div
@@ -210,32 +272,91 @@ export function CreateOffer() {
           </div>
         </div>
 
-        {/* Preview */}
-        {formData.originalPrice && formData.offerType && (
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-3">Preview</h3>
-              <div className="bg-muted/50 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-semibold" data-testid="text-preview-split">
-                      Split Cost: ₹{calculateSplitPrice()} each
-                    </h4>
-                    <p className="text-sm text-muted-foreground" data-testid="text-preview-original">
-                      Original: ₹{formData.originalPrice}
-                    </p>
+            {/* Preview */}
+            {formData.originalPrice && formData.offerType && (
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="font-medium mb-3">Preview</h3>
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold" data-testid="text-preview-split">
+                          Split Cost: ₹{calculateSplitPrice()} each
+                        </h4>
+                        <p className="text-sm text-muted-foreground" data-testid="text-preview-original">
+                          Original: ₹{formData.originalPrice}
+                        </p>
+                      </div>
+                      <span className="bg-primary text-primary-foreground px-2 py-1 rounded text-xs">
+                        {formData.offerType === "buy1get1" && "Buy 1 Get 1 Free"}
+                        {formData.offerType === "buy2get1" && "Buy 2 Get 1 Free"}
+                        {formData.offerType === "50percent" && "50% Off 2nd Item"}
+                        {formData.offerType === "custom" && "Custom Offer"}
+                      </span>
+                    </div>
                   </div>
-                  <span className="bg-primary text-primary-foreground px-2 py-1 rounded text-xs">
-                    {formData.offerType === "buy1get1" && "Buy 1 Get 1 Free"}
-                    {formData.offerType === "buy2get1" && "Buy 2 Get 1 Free"}
-                    {formData.offerType === "50percent" && "50% Off 2nd Item"}
-                    {formData.offerType === "custom" && "Custom Offer"}
-                  </span>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="request" className="space-y-6">
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Title</Label>
+                <Input placeholder="What do you need?" value={reqTitle} onChange={(e) => setReqTitle(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Type</Label>
+                <Select value={reqType} onValueChange={setReqType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="service">Service</SelectItem>
+                    <SelectItem value="product">Product</SelectItem>
+                    <SelectItem value="help">Help</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Category</Label>
+                <Select value={reqCategory} onValueChange={setReqCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Food">Food</SelectItem>
+                    <SelectItem value="Electronics">Electronics</SelectItem>
+                    <SelectItem value="Fitness">Fitness</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Image</Label>
+                <div className="flex items-center gap-2">
+                  <Input type="file" accept="image/*" onChange={(e) => setReqImageFile(e.target.files?.[0] || null)} />
+                  <Upload className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Uploads to Supabase bucket "requests"</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Latitude</Label>
+                  <Input value={reqLatitude} onChange={(e) => setReqLatitude(e.target.value)} placeholder="12.97" />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Longitude</Label>
+                  <Input value={reqLongitude} onChange={(e) => setReqLongitude(e.target.value)} placeholder="77.59" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
+              <Button variant="outline" onClick={useMyLocation} className="gap-2 w-full">
+                <MapPin className="w-4 h-4" /> Use my location
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
