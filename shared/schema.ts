@@ -114,6 +114,11 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
   createdAt: true,
 });
 
+export const insertRequestSchema = createInsertSchema(requests).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertRatingSchema = createInsertSchema(ratings).omit({
   id: true,
   createdAt: true,
