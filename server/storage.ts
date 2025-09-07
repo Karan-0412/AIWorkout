@@ -17,6 +17,11 @@ export interface IStorage {
   getOffers(filters?: { location?: string; status?: string; limit?: number }): Promise<Offer[]>;
   updateOffer(id: string, updates: Partial<Offer>): Promise<Offer | undefined>;
 
+  // Map Request operations
+  createRequest(request: InsertRequest): Promise<MapRequest>;
+  getRequest(id: string): Promise<MapRequest | undefined>;
+  getRequests(): Promise<MapRequest[]>;
+
   // Join request operations
   createJoinRequest(joinRequest: InsertJoinRequest): Promise<JoinRequest>;
   getJoinRequestsByOffer(offerId: string): Promise<JoinRequest[]>;
