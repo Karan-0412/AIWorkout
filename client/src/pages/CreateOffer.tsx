@@ -120,10 +120,37 @@ export function CreateOffer() {
             </Select>
           </div>
           <div>
-            <Label className="text-sm font-medium mb-2 block">Image</Label>
-            <div className="flex items-center gap-2">
-              <Input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} />
-              <Upload className="w-4 h-4 text-muted-foreground" />
+            <Label className="text-sm font-medium mb-3 block">Images</Label>
+            <div className="grid grid-cols-3 gap-3">
+              <label className="aspect-square border-2 border-dashed border-border rounded-xl flex items-center justify-center hover:border-primary hover:bg-primary/5 transition-all cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null;
+                    setImageFile(f);
+                    setImagePreview(f ? URL.createObjectURL(f) : null);
+                  }}
+                />
+                <div className="text-center">
+                  <Camera className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-xs text-muted-foreground">Add Photo</p>
+                </div>
+              </label>
+              {imagePreview && (
+                <div className="aspect-square border border-border rounded-lg relative overflow-hidden">
+                  <img src={imagePreview} alt="Upload" className="w-full h-full object-cover" />
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => { setImageFile(null); setImagePreview(null); }}
+                    className="absolute top-1 right-1 w-6 h-6 p-0"
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Uploads to Supabase bucket "requests"</p>
           </div>
