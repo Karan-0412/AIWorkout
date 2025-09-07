@@ -48,6 +48,19 @@ export const joinRequests = pgTable("join_requests", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Map requests table for user-posted requests to be shown on the map
+export const requests = pgTable("requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  type: text("type").notNull(), // "service", "product", "help"
+  category: text("category").notNull(), // e.g., "Food", "Electronics", "Fitness", "Other"
+  imageUrl: text("image_url"),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }).notNull(),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const chats = pgTable("chats", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   offerId: varchar("offer_id").notNull().references(() => offers.id),
