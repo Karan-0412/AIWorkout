@@ -16,6 +16,7 @@ export function CreateOffer() {
   const [type, setType] = useState(""); // service | product | help
   const [category, setCategory] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [latitude, setLatitude] = useState<string>("");
   const [longitude, setLongitude] = useState<string>("");
   const [uploading, setUploading] = useState(false);
