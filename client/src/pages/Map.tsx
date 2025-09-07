@@ -1,9 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import L from "leaflet";
+import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from "@react-google-maps/api";
 import { useQuery } from "@tanstack/react-query";
 
 type RequestItem = {
@@ -16,14 +15,24 @@ type RequestItem = {
   longitude: string | number;
 };
 
-function getIconByType(type: string) {
+function markerIcon(type: string) {
   const color = type === "service" ? "#0079D3" : type === "product" ? "#16a34a" : "#ef4444";
-  const html = `<div style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:${color};box-shadow:0 2px 6px rgba(0,0,0,0.3);color:#fff;font-weight:700;font-size:14px;">•</div>`;
-  return L.divIcon({ html, className: "", iconSize: [28, 28], iconAnchor: [14, 14], popupAnchor: [0, -14] });
+  const svg = `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="12" fill="${color}"/><circle cx="20" cy="20" r="3" fill="white"/></svg>`;
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new google.maps.Size(28, 28),
+    anchor: new google.maps.Point(14, 14),
+  } as google.maps.Icon;
 }
 
 export function Map() {
   const [, navigate] = useLocation();
+  const [selected, setSelected] = useState<RequestItem | null>(null);
+
+  const { isLoaded } = useJsApiLoader({
+    id: "google-map-script",
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string,
+  });
 
   const { data: requests } = useQuery<RequestItem[]>({
     queryKey: ["requests"],
@@ -34,7 +43,16 @@ export function Map() {
     },
   });
 
-  const center = useMemo<[number, number]>(() => [12.9716, 77.5946], []);
+  const center = useMemo<google.maps.LatLngLiteral>(() => ({ lat: 12.9716, lng: 77.5946 }), []);
+  const options = useMemo<google.maps.MapOptions>(
+    () => ({
+      mapId: undefined,
+      disableDefaultUI: false,
+      clickableIcons: true,
+      gestureHandling: "greedy",
+    }),
+    []
+  );
 
   return (
     <div className="fixed inset-0 bg-background" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
@@ -46,36 +64,47 @@ export function Map() {
         </div>
       </div>
 
-      <MapContainer center={center} zoom={12} style={{ height: "100%", width: "100%" }} scrollWheelZoom>
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {(requests || []).map((r) => {
-          const lat = typeof r.latitude === "string" ? parseFloat(r.latitude) : (r.latitude as number);
-          const lng = typeof r.longitude === "string" ? parseFloat(r.longitude) : (r.longitude as number);
-          if (isNaN(lat) || isNaN(lng)) return null;
-          return (
-            <Marker key={r.id} position={[lat, lng]} icon={getIconByType(r.type)}>
-              <Popup>
-                <div className="w-56">
-                  {r.imageUrl && (
-                    <img src={r.imageUrl} alt={r.title} className="w-full h-28 object-cover rounded-md mb-2" />
-                  )}
-                  <h3 className="font-semibold text-sm mb-1">{r.title}</h3>
-                  <p className="text-xs text-muted-foreground mb-3">{r.category}</p>
-                  <button
-                    onClick={() => navigate(`/requests/${r.id}`)}
-                    className="px-3 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    View Details
-                  </button>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
-      </MapContainer>
+      {isLoaded && (
+        <GoogleMap
+          center={center}
+          zoom={12}
+          mapContainerStyle={{ width: "100%", height: "100%" }}
+          options={options}
+        >
+          {(requests || []).map((r) => {
+            const lat = typeof r.latitude === "string" ? parseFloat(r.latitude) : (r.latitude as number);
+            const lng = typeof r.longitude === "string" ? parseFloat(r.longitude) : (r.longitude as number);
+            if (isNaN(lat) || isNaN(lng)) return null;
+            return (
+              <Marker
+                key={r.id}
+                position={{ lat, lng }}
+                icon={markerIcon(r.type)}
+                onClick={() => setSelected(r)}
+              />
+            );
+          })}
+
+          {selected && (
+            <InfoWindow position={{ lat: Number(selected.latitude), lng: Number(selected.longitude) }} onCloseClick={() => setSelected(null)}>
+              <div className="w-56">
+                {selected.imageUrl && (
+                  <img src={selected.imageUrl} alt={selected.title} className="w-full h-28 object-cover rounded-md mb-2" />
+                )}
+                <h3 className="font-semibold text-sm mb-1">{selected.title}</h3>
+                <p className="text-xs text-muted-foreground mb-3">{selected.category}</p>
+                <button
+                  onClick={() => navigate(`/requests/${selected.id}`)}
+                  className="px-3 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  View Details
+                </button>
+              </div>
+            </InfoWindow>
+          )}
+        </GoogleMap>
+      )}
+
       <button
         onClick={() => navigate('/create')}
         className="absolute bottom-4 right-4 z-20 px-4 py-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90"
