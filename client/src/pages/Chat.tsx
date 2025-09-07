@@ -111,12 +111,16 @@ function ChatRoom({ chatId }: { chatId: string }) {
           setMessages([
             { id: "m1", chatId, senderId: "other", content: "Hi! I'm interested in splitting this deal." },
             { id: "m2", chatId, senderId: "me", content: "Great! Let's coordinate." },
+            { id: "m3", chatId, senderId: "other", content: "I'm free this evening around 6 PM." },
+            { id: "m4", chatId, senderId: "me", content: "Perfect, see you at Koramangala Starbucks." },
           ]);
         }
       } catch {
         setMessages([
           { id: "m1", chatId, senderId: "other", content: "Hi! I'm interested in splitting this deal." },
           { id: "m2", chatId, senderId: "me", content: "Great! Let's coordinate." },
+          { id: "m3", chatId, senderId: "other", content: "I'm free this evening around 6 PM." },
+          { id: "m4", chatId, senderId: "me", content: "Perfect, see you at Koramangala Starbucks." },
         ]);
       }
     })();
