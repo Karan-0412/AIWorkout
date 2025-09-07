@@ -38,7 +38,6 @@ function AppContent() {
         <Route path="/chats" component={Chat} />
         <Route path="/chat/:id" component={Chat} />
         <Route path="/map" component={Map} />
-        <Route path="/requests/new" component={CreateRequest} />
         <Route path="/requests/:id" component={RequestDetails} />
         <Route path="/profile" component={Profile} />
         <Route component={NotFound} />
