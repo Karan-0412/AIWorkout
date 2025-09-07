@@ -195,7 +195,7 @@ function ChatRoom({ chatId }: { chatId: string }) {
 
       <div className="flex-1 p-3 space-y-4 overflow-y-auto custom-scrollbar bg-[radial-gradient(ellipse_at_top,theme(colors.muted)/30_0%,transparent_60%)]">
         {messages.map((msg) => {
-          const isMe = msg.senderId === backendUser?.id;
+          const isMe = msg.senderId === (backendUser?.id || 'me');
           const isImage = msg.messageType === 'image' || msg.content.startsWith('data:image/');
           const isFile = msg.messageType === 'file' && !isImage;
           return (
@@ -204,9 +204,9 @@ function ChatRoom({ chatId }: { chatId: string }) {
                 <Avatar className="w-8 h-8 shrink-0"><AvatarFallback>U</AvatarFallback></Avatar>
               )}
               <div className={`max-w-[70%] ${isMe ? 'items-end text-right' : ''}`}>
-                <div className={`rounded-2xl shadow ${isMe ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-card border border-border rounded-bl-sm'}`}>
+                <div className={`rounded-2xl shadow ${isMe ? 'bg-accent text-accent-foreground rounded-br-sm' : 'bg-card border border-border rounded-bl-sm'}`}>
                   {isImage ? (
-                    <img src={msg.content} alt={msg.fileName || 'image'} className={`rounded-2xl ${isMe ? 'rounded-br-sm' : 'rounded-bl-sm'} max-h-64 object-cover`} />
+                    <img src={msg.content} alt={msg.fileName || 'image'} className={`rounded-2xl ${isMe ? 'rounded-br-sm' : 'rounded-bl-sm'} max-h-64 object-cover ${isMe ? 'ring-2 ring-accent' : ''}`} />
                   ) : isFile ? (
                     <a href={msg.content} download={msg.fileName || 'file'} className="block px-4 py-3 text-sm underline underline-offset-2">
                       {msg.fileName || 'Attachment'}
