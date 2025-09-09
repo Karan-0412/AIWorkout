@@ -185,7 +185,7 @@ export function Profile() {
       </div>
       {/* Edit Profile Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[92vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Profile</DialogTitle>
           </DialogHeader>
@@ -283,7 +283,7 @@ export function Profile() {
 
       {/* Settings Dialog */}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[92vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Settings & Privacy</DialogTitle>
           </DialogHeader>
@@ -299,7 +299,7 @@ export function Profile() {
 
       {/* About Dialog */}
       <Dialog open={aboutOpen} onOpenChange={setAboutOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[92vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>About OfferShare</DialogTitle>
           </DialogHeader>
