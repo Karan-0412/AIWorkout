@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
 
-type ChatItem = { id: string; lastMessage?: string; lastMessageAt?: string };
+type ChatItem = { id: string; user1Id?: string; user2Id?: string; lastMessage?: string; lastMessageAt?: string; };
+type ChatDisplay = { id: string; lastMessage?: string; lastMessageAt?: string; participant?: { id: string; displayName?: string; photoUrl?: string | null } };
 type Message = { id: string; chatId: string; senderId: string; content: string; createdAt?: string; isRead?: boolean; messageType?: 'text' | 'image' | 'file'; fileName?: string; status?: 'sent' | 'delivered' | 'read' };
 
 async function ensureBackendUser(firebaseUser: any) {
