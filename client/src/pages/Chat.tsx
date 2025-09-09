@@ -1,177 +1,387 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
-import { ArrowLeft, Phone, Paperclip, Send, MapPin, Link } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useRoute } from "wouter";
+import { ArrowLeft, Phone, Paperclip, Send, Check, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/use-auth";
+import { useNotifier } from "@/hooks/use-notifier";
 
-export function Chat() {
+type ChatItem = { id: string; user1Id?: string; user2Id?: string; lastMessage?: string; lastMessageAt?: string; };
+type ChatDisplay = { id: string; lastMessage?: string; lastMessageAt?: string; participant?: { id: string; displayName?: string; photoUrl?: string | null } };
+type Message = { id: string; chatId: string; senderId: string; content: string; createdAt?: string; isRead?: boolean; messageType?: 'text' | 'image' | 'file'; fileName?: string; status?: 'sent' | 'delivered' | 'read' };
+
+async function ensureBackendUser(firebaseUser: any) {
+  const res = await fetch("/api/users/ensure", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      firebaseUid: firebaseUser.uid,
+      email: firebaseUser.email,
+      displayName: firebaseUser.displayName || firebaseUser.email,
+      photoUrl: firebaseUser.photoURL,
+    }),
+  });
+  if (!res.ok) throw new Error("Failed to ensure user");
+  return res.json();
+}
+
+function useWs(userId?: string) {
+  const wsRef = useRef<WebSocket | null>(null);
+  useEffect(() => {
+    if (!userId) return;
+    const proto = window.location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${proto}://${window.location.host}/ws?userId=${userId}`);
+    wsRef.current = ws;
+    return () => ws.close();
+  }, [userId]);
+  return wsRef;
+}
+
+function ChatsList() {
   const [, navigate] = useLocation();
+  const { user } = useAuth();
+  const [backendUser, setBackendUser] = useState<any>();
+  const [chats, setChats] = useState<ChatDisplay[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      if (!user) return;
+      try {
+        const u = await ensureBackendUser(user);
+        setBackendUser(u);
+        const res = await fetch(`/api/users/${u.id}/chats`);
+        if (res.ok) {
+          const rawChats: ChatItem[] = await res.json();
+
+          // Fetch participant info for each chat (the other user)
+          const enriched = await Promise.all(
+            rawChats.map(async (ch): Promise<ChatDisplay> => {
+              try {
+                const otherId = ch.user1Id === u.id ? ch.user2Id : ch.user1Id;
+                if (!otherId) return { id: ch.id, lastMessage: ch.lastMessage, lastMessageAt: ch.lastMessageAt };
+                const pRes = await fetch(`/api/users/${otherId}`);
+                if (pRes.ok) {
+                  const participant = await pRes.json();
+                  return { id: ch.id, lastMessage: ch.lastMessage, lastMessageAt: ch.lastMessageAt, participant: { id: participant.id, displayName: participant.displayName, photoUrl: participant.photoUrl } };
+                }
+              } catch {}
+              return { id: ch.id, lastMessage: ch.lastMessage, lastMessageAt: ch.lastMessageAt };
+            })
+          );
+
+          setChats(enriched);
+        } else {
+          setChats([
+            { id: "sample-1", lastMessage: "Hey! Interested in the offer?", lastMessageAt: new Date().toISOString(), participant: { id: 'sample-user', displayName: 'Alice' } },
+            { id: "sample-2", lastMessage: "Can we meet near MG Road?", lastMessageAt: new Date(Date.now() - 3600_000).toISOString(), participant: { id: 'sample-user-2', displayName: 'Bob' } },
+          ]);
+        }
+      } catch {
+        setChats([
+          { id: "sample-1", lastMessage: "Hey! Interested in the offer?", lastMessageAt: new Date().toISOString(), participant: { id: 'sample-user', displayName: 'Alice' } },
+          { id: "sample-2", lastMessage: "Can we meet near MG Road?", lastMessageAt: new Date(Date.now() - 3600_000).toISOString(), participant: { id: 'sample-user-2', displayName: 'Bob' } },
+        ]);
+      }
+    })();
+  }, [user]);
+
+  return (
+    <div className="max-w-md mx-auto bg-background min-h-screen pb-[calc(env(safe-area-inset-bottom)+88px)]">
+      <header className="sticky top-0 bg-background border-b border-border p-4 z-40" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+        <h2 className="text-lg font-semibold">Chats</h2>
+      </header>
+      <div className="p-2 space-y-2">
+        {chats.map((c) => (
+          <button key={c.id} onClick={() => navigate(`/chat/${c.id}`)} className="w-full text-left p-4 rounded-xl border border-border bg-card hover:bg-accent/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Avatar className="w-10 h-10">
+                  <AvatarImage src={c.participant?.photoUrl || ""} alt={c.participant?.displayName || "User"} />
+                  <AvatarFallback>{(c.participant?.displayName || "U")[0]}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{c.participant?.displayName || "Chat"}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-1">{c.lastMessage || "No messages yet"}</p>
+                </div>
+              </div>
+              <span className="text-xs text-muted-foreground">{c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleTimeString() : ""}</span>
+            </div>
+          </button>
+        ))}
+        {chats.length === 0 && <p className="text-center text-sm text-muted-foreground p-6">No chats yet. Sample chat will appear once you open one.</p>}
+      </div>
+    </div>
+  );
+}
+
+function ChatRoom({ chatId }: { chatId: string }) {
+  const [, navigate] = useLocation();
+  const { user } = useAuth();
+  const [backendUser, setBackendUser] = useState<any>();
+  const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState("");
-  const [messages] = useState([
-    {
-      id: "1",
-      senderId: "other",
-      content: "Hey! I'm interested in splitting this deal. Can we coordinate the purchase?",
-      timestamp: "2:34 PM",
-      isRead: true,
-    },
-    {
-      id: "2",
-      senderId: "me",
-      content: "Sure! I can order it today. Which payment method works for you?",
-      timestamp: "2:35 PM",
-      isRead: true,
-    },
-  ]);
+  const [participants, setParticipants] = useState<Record<string, { displayName?: string; photoUrl?: string | null }>>({});
+  const [attachments, setAttachments] = useState<{ id: string; url: string; name: string; type: 'image' | 'file' }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const wsRef = useWs(backendUser?.id);
 
-  const chatPartner = {
-    name: "Rahul Kumar",
-    avatar: "https://images.unsplash.com/photo-1633332755192-727a05c4013d?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100",
-    rating: 4.8,
-    isOnline: true,
-  };
+  useEffect(() => {
+    (async () => {
+      if (!user) return;
+      try {
+        const u = await ensureBackendUser(user);
+        setBackendUser(u);
+        const res = await fetch(`/api/chats/${chatId}/messages`);
+        if (res.ok) {
+          const serverMsgs: Message[] = await res.json();
+          setMessages(serverMsgs.map(m => ({ ...m, status: m.isRead ? 'read' : 'delivered' })));
+          fetch(`/api/chats/${chatId}/mark-read`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: u.id }) });
 
-  const offer = {
-    title: "Sony WH-1000XM4 Headphones",
-    splitPrice: "12499",
-  };
+          // Fetch participant info for message senders (excluding current user)
+          const senderIds = Array.from(new Set(serverMsgs.map(m => m.senderId).filter(id => id && id !== u.id && id !== 'me')));
+          if (senderIds.length > 0) {
+            const map: Record<string, { displayName?: string; photoUrl?: string | null }> = {};
+            await Promise.all(senderIds.map(async (sid) => {
+              try {
+                const r = await fetch(`/api/users/${sid}`);
+                if (r.ok) {
+                  const p = await r.json();
+                  map[sid] = { displayName: p.displayName, photoUrl: p.photoUrl };
+                }
+              } catch {}
+            }));
+            if (Object.keys(map).length) setParticipants(prev => ({ ...prev, ...map }));
+          }
+        } else {
+          const fallback = [
+            { id: "m1", chatId, senderId: "other", content: "Hi! I'm interested in splitting this deal." },
+            { id: "m2", chatId, senderId: "me", content: "Great! Let's coordinate.", status: 'read' },
+            { id: "m3", chatId, senderId: "other", content: "I'm free this evening around 6 PM." },
+            { id: "m4", chatId, senderId: "me", content: "Perfect, see you at Koramangala Starbucks.", status: 'delivered' },
+          ];
+          setMessages(fallback);
+          // map sample sender ids to friendly participant names so AvatarFallback shows initials correctly
+          setParticipants(prev => ({ ...prev, other: { displayName: 'Alice' }, me: { displayName: u?.displayName || 'You' } }));
+        }
+      } catch {
+        const fallback = [
+          { id: "m1", chatId, senderId: "other", content: "Hi! I'm interested in splitting this deal." },
+          { id: "m2", chatId, senderId: "me", content: "Great! Let's coordinate.", status: 'read' },
+          { id: "m3", chatId, senderId: "other", content: "I'm free this evening around 6 PM." },
+          { id: "m4", chatId, senderId: "me", content: "Perfect, see you at Koramangala Starbucks.", status: 'delivered' },
+        ];
+        setMessages(fallback);
+        setParticipants(prev => ({ ...prev, other: { displayName: 'Alice' }, me: { displayName: user?.displayName || 'You' } }));
+      }
+    })();
+  }, [user, chatId]);
 
-  const handleSendMessage = () => {
-    if (!message.trim()) return;
-    
-    // In production, this would send the message via Firebase
+  const { notify } = useNotifier();
+
+  useEffect(() => {
+    const ws = wsRef.current;
+    if (!ws) return;
+    ws.onmessage = (evt) => {
+      try {
+        const data = JSON.parse(evt.data);
+        if (data.type === "new_message") {
+          setMessages((m) => [...m, data.message]);
+
+          const sid = data.message?.senderId;
+          if (sid && sid !== backendUser?.id && sid !== 'me' && !participants[sid]) {
+            (async () => {
+              try {
+                const r = await fetch(`/api/users/${sid}`);
+                if (r.ok) {
+                  const p = await r.json();
+                  setParticipants(prev => ({ ...prev, [sid]: { displayName: p.displayName, photoUrl: p.photoUrl } }));
+
+                  // Show notification if window not focused or user is not in this chat
+                  const title = p.displayName || 'New message';
+                  const body = data.message.content?.slice(0, 120) || 'You have a new message';
+                  const icon = p.photoUrl || undefined;
+
+                  const shouldNotify = document.hidden || true; // always notify for demo; refine as needed
+                  if (shouldNotify) {
+                    notify({
+                      title,
+                      body,
+                      icon,
+                      onClick: () => {
+                        window.focus();
+                        // navigate to the chat
+                        try { window.location.href = `/chat/${data.message.chatId}`; } catch (e) {}
+                      },
+                      ttl: 10000,
+                    });
+                  }
+                }
+              } catch {}
+            })();
+          }
+        }
+      } catch {}
+    };
+  }, [wsRef, backendUser, participants, notify]);
+
+  const handleSend = async () => {
+    const text = message.trim();
+    if (!text && attachments.length === 0) return;
     setMessage("");
+
+    const sendOne = async (payload: { content: string; messageType?: 'text'|'image'|'file'; fileName?: string }) => {
+      const id = Math.random().toString();
+      const local: Message = { id, chatId, senderId: backendUser?.id || 'me', content: payload.content, messageType: payload.messageType, fileName: payload.fileName, status: 'sent' };
+      if (backendUser) {
+        const socketPayload = { type: 'chat_message', chatId, senderId: backendUser.id, content: payload.content, messageType: payload.messageType } as any;
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify(socketPayload));
+        } else {
+          try {
+            await fetch(`/api/chats/${chatId}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ senderId: backendUser.id, content: payload.content, messageType: payload.messageType }) });
+          } catch {}
+        }
+      }
+      setMessages((m) => [...m, local]);
+      // Simulate delivered and read progression
+      setTimeout(() => setMessages(m => m.map(mm => mm.id === id ? { ...mm, status: 'delivered' } : mm)), 1000);
+      setTimeout(() => setMessages(m => m.map(mm => mm.id === id ? { ...mm, status: 'read' } : mm)), 4000);
+    };
+
+    if (text) {
+      await sendOne({ content: text, messageType: 'text' });
+    }
+
+    for (const a of attachments) {
+      await sendOne({ content: a.url, messageType: a.type === 'image' ? 'image' : 'file', fileName: a.name });
+    }
+
+    setAttachments([]);
   };
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="bg-card border-b border-border p-4">
+    <div className="max-w-md mx-auto bg-background min-h-screen flex flex-col pb-[calc(env(safe-area-inset-bottom)+88px)]">
+      <header className="bg-card border-b border-border p-4" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex items-center space-x-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/chats")}
-            data-testid="button-back-to-chats"
-          >
+          <Button variant="ghost" size="sm" onClick={() => navigate("/chats")} data-testid="button-back-to-chats">
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <Avatar className="w-10 h-10">
-            <AvatarImage src={chatPartner.avatar} alt={chatPartner.name} />
-            <AvatarFallback>{chatPartner.name[0]}</AvatarFallback>
+            <AvatarImage src={user?.photoURL || ""} alt={user?.displayName || ""} />
+            <AvatarFallback>{user?.displayName?.[0] || user?.email?.[0] || "U"}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <h3 className="font-semibold" data-testid="text-partner-name">{chatPartner.name}</h3>
-            <p className="text-sm text-muted-foreground">
-              ⭐ {chatPartner.rating} • {chatPartner.isOnline ? "Online" : "Offline"}
-            </p>
+            <h3 className="font-semibold">Chat</h3>
+            <p className="text-sm text-muted-foreground">Secure</p>
           </div>
-          <Button variant="ghost" size="sm" data-testid="button-call">
+          <Button variant="ghost" size="sm">
             <Phone className="w-4 h-4 text-accent" />
           </Button>
         </div>
       </header>
 
-      {/* Chat Messages */}
-      <div className="flex-1 p-4 space-y-4 overflow-y-auto custom-scrollbar">
-        {/* Offer Context Card */}
-        <div className="bg-muted/50 rounded-lg p-3 mx-auto max-w-sm" data-testid="offer-context-card">
-          <div className="text-center">
-            <p className="text-sm font-medium" data-testid="text-offer-title">{offer.title}</p>
-            <p className="text-xs text-muted-foreground" data-testid="text-offer-split">
-              Split: ₹{offer.splitPrice} each
-            </p>
-            <Button size="sm" className="mt-2 px-3 py-1 text-xs" data-testid="button-view-offer">
-              View Offer
-            </Button>
-          </div>
-        </div>
-
-        {/* Messages */}
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex items-start space-x-2 ${msg.senderId === "me" ? "justify-end" : ""}`}
-            data-testid={`message-${msg.id}`}
-          >
-            {msg.senderId !== "me" && (
-              <Avatar className="w-8 h-8">
-                <AvatarImage src={chatPartner.avatar} alt={chatPartner.name} />
-                <AvatarFallback>{chatPartner.name[0]}</AvatarFallback>
-              </Avatar>
-            )}
-            <div className={`flex-1 ${msg.senderId === "me" ? "text-right" : ""}`}>
-              <div
-                className={`rounded-lg p-3 max-w-xs ${
-                  msg.senderId === "me"
-                    ? "bg-primary text-primary-foreground ml-auto"
-                    : "bg-card border border-border"
-                }`}
-              >
-                <p className="text-sm" data-testid={`text-message-${msg.id}`}>{msg.content}</p>
+      <div className="flex-1 p-3 space-y-4 overflow-y-auto custom-scrollbar bg-background">
+        {messages.map((msg) => {
+          const isMe = msg.senderId === (backendUser?.id || 'me');
+          const isImage = msg.messageType === 'image' || msg.content.startsWith('data:image/');
+          const isFile = msg.messageType === 'file' && !isImage;
+          return (
+            <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
+              {!isMe && (
+                <Avatar className="w-8 h-8 shrink-0">
+                  <AvatarImage src={participants[msg.senderId]?.photoUrl || ""} alt={participants[msg.senderId]?.displayName || msg.senderId} />
+                  <AvatarFallback>{(participants[msg.senderId]?.displayName?.[0] || msg.senderId?.[0] || "U").toUpperCase()}</AvatarFallback>
+                </Avatar>
+              )}
+              <div className={`max-w-[70%] ${isMe ? 'items-end text-right' : ''}`}>
+                <div className={`relative rounded-2xl shadow ${isMe ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-card border border-border rounded-bl-sm'}`}>
+                  {isImage ? (
+                    <img src={msg.content} alt={msg.fileName || 'image'} className={`rounded-2xl ${isMe ? 'rounded-br-sm' : 'rounded-bl-sm'} max-h-64 object-cover ${isMe ? 'ring-2 ring-primary' : ''}`} />
+                  ) : isFile ? (
+                    <a href={msg.content} download={msg.fileName || 'file'} className="block px-4 py-3 text-sm underline underline-offset-2">
+                      {msg.fileName || 'Attachment'}
+                    </a>
+                  ) : (
+                    <p className="px-4 py-3 text-sm leading-relaxed">{msg.content}</p>
+                  )}
+                  {isMe && (
+                    <span className="absolute -bottom-4 right-1 flex items-center gap-0.5 text-[10px]">
+                      {msg.status === 'read' ? (
+                        <CheckCheck className="w-3 h-3 text-primary" />
+                      ) : msg.status === 'delivered' ? (
+                        <CheckCheck className="w-3 h-3 text-muted-foreground" />
+                      ) : (
+                        <Check className="w-3 h-3 text-muted-foreground" />
+                      )}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-3 text-[10px] text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
               </div>
-              <p className="text-xs text-muted-foreground mt-1" data-testid={`text-timestamp-${msg.id}`}>
-                {msg.timestamp} {msg.senderId === "me" && msg.isRead && "• Read"}
-              </p>
             </div>
-          </div>
-        ))}
-
-        {/* Quick Actions */}
-        <div className="flex justify-center space-x-2 py-4">
-          <Button
-            variant="secondary"
-            size="sm"
-            className="px-3 py-2 text-xs rounded-full hover:bg-accent/20 transition-colors"
-            data-testid="button-share-location"
-          >
-            <MapPin className="w-3 h-3 mr-1" />
-            Share Location
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="px-3 py-2 text-xs rounded-full hover:bg-accent/20 transition-colors"
-            onClick={() => {
-              const productLink = "https://amazon.in/sony-wh1000xm4-headphones";
-              navigator.clipboard.writeText(productLink);
-              // In production, this would add a message to the chat
-            }}
-            data-testid="button-share-link"
-          >
-            <Link className="w-3 h-3 mr-1" />
-            Share Product Link
-          </Button>
-        </div>
+          );
+        })}
       </div>
 
-      {/* Chat Input */}
-      <div className="p-4 border-t border-border">
-        <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="sm" data-testid="button-attach">
-            <Paperclip className="w-4 h-4 text-muted-foreground" />
+      {attachments.length > 0 && (
+        <div className="px-4 pb-2 flex gap-2 overflow-x-auto">
+          {attachments.map(a => (
+            <div key={a.id} className="relative w-16 h-16 rounded-md border border-border overflow-hidden">
+              {a.type === 'image' ? (
+                <img src={a.url} alt={a.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs p-2 text-center">{a.name}</div>
+              )}
+              <button className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground text-xs" onClick={() => setAttachments(prev => prev.filter(x => x.id !== a.id))}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="p-4 border-t border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky bottom-0">
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip"
+            className="hidden"
+            onChange={(e) => {
+              const files = Array.from(e.target.files || []);
+              files.forEach((f) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const url = String(reader.result);
+                  setAttachments(prev => [...prev, { id: Math.random().toString(), url, name: f.name, type: f.type.startsWith('image/') ? 'image' : 'file' }]);
+                };
+                reader.readAsDataURL(f);
+              });
+              e.currentTarget.value = '';
+            }}
+          />
+          <Button variant="outline" size="icon" onClick={() => fileInputRef.current?.click()} className="rounded-full">
+            <Paperclip className="w-4 h-4" />
           </Button>
           <Input
             type="text"
-            placeholder="Type a message..."
+            placeholder="Message"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
             className="flex-1 rounded-full border-border"
-            data-testid="input-message"
           />
-          <Button
-            onClick={handleSendMessage}
-            size="sm"
-            className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
-            data-testid="button-send"
-          >
+          <Button onClick={handleSend} size="icon" className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90">
             <Send className="w-4 h-4" />
           </Button>
         </div>
       </div>
     </div>
   );
+}
+
+export function Chat() {
+  const [isChat, params] = useRoute("/chat/:id");
+  if (isChat) return <ChatRoom chatId={(params as any).id} />;
+  return <ChatsList />;
 }

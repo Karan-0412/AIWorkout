@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
-import { Search, Filter, MapPin, Bell, Sun, Moon } from "lucide-react";
+import { Search, Filter, MapPin, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { OfferCard } from "@/components/OfferCard";
 import { JoinOfferBottomSheet } from "@/components/JoinOfferBottomSheet";
 import { useThemeContext } from "@/components/ThemeProvider";
@@ -11,8 +14,20 @@ import { useToast } from "@/hooks/use-toast";
 export function Home() {
   const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const [selectedOffer, setSelectedOffer] = useState<any>(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
+  const [nearOpen, setNearOpen] = useState(false);
+  const [nearKm, setNearKm] = useState<number>(5);
+  const [nearEnabled, setNearEnabled] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [typeFilters, setTypeFilters] = useState<{ [k: string]: boolean }>({
+    buy1get1: false,
+    buy2get1: false,
+    "50percent": false,
+    custom: false,
+  });
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 30000]);
   const { theme, toggleTheme } = useThemeContext();
   const { toast } = useToast();
 
@@ -98,15 +113,12 @@ export function Home() {
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative transition-theme">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border transition-theme">
+      <header className="sticky top-0 z-40 bg-background border-b border-border transition-theme" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center space-x-3">
             <h1 className="text-xl font-bold text-primary" data-testid="text-app-title">OfferShare</h1>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="sm" className="p-2.5 rounded-full hover:bg-accent/10" data-testid="button-search">
-              <Search className="w-4 h-4 text-muted-foreground" />
-            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -120,36 +132,33 @@ export function Home() {
                 <Moon className="w-4 h-4 text-accent" />
               )}
             </Button>
-            <Button variant="ghost" size="sm" className="p-2.5 rounded-full relative hover:bg-accent/10" data-testid="button-notifications">
-              <Bell className="w-4 h-4 text-muted-foreground" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-xs text-destructive-foreground rounded-full flex items-center justify-center">
-                3
-              </span>
-            </Button>
           </div>
         </div>
       </header>
 
+
       {/* Main Content */}
-      <main className="pb-20">
+      <main className="pb-[calc(env(safe-area-inset-bottom)+88px)]">
         {/* Feed Header */}
         <div className="p-4 space-y-5">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold" data-testid="text-feed-title">Active Offers</h2>
             <div className="flex items-center space-x-2">
               <Button
-                variant="secondary"
+                variant={filterOpen ? "default" : "secondary"}
                 size="sm"
-                className="px-3 py-1.5 text-sm rounded-full hover:bg-accent/20 transition-colors"
+                className="px-3 py-1.5 text-sm rounded-full transition-colors"
+                onClick={() => setFilterOpen(v => !v)}
                 data-testid="button-filter"
               >
                 <Filter className="w-3 h-3 mr-1" />
                 Filter
               </Button>
               <Button
-                variant="secondary"
+                variant={nearEnabled ? "default" : "secondary"}
                 size="sm"
-                className="px-3 py-1.5 text-sm rounded-full hover:bg-accent/20 transition-colors"
+                className="px-3 py-1.5 text-sm rounded-full transition-colors"
+                onClick={() => setNearOpen((v) => !v)}
                 data-testid="button-near-me"
               >
                 <MapPin className="w-3 h-3 mr-1" />
@@ -162,6 +171,7 @@ export function Home() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
+              ref={searchRef}
               type="text"
               placeholder="Search offers..."
               value={searchQuery}
@@ -172,9 +182,92 @@ export function Home() {
           </div>
         </div>
 
+        {/* Filter Panel */}
+        {filterOpen && (
+          <div className="px-4">
+            <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Filter offers</p>
+                <Button variant="ghost" size="sm" onClick={() => setFilterOpen(false)}>Close</Button>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs uppercase text-muted-foreground">Offer types</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["buy1get1","buy2get1","50percent","custom"] as const).map((t) => (
+                    <label key={t} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={typeFilters[t]}
+                        onCheckedChange={(v) => setTypeFilters(prev => ({ ...prev, [t]: Boolean(v) }))}
+                      />
+                      <span>
+                        {t === "buy1get1" && "Buy 1 Get 1"}
+                        {t === "buy2get1" && "Buy 2 Get 1"}
+                        {t === "50percent" && "50% Off 2nd"}
+                        {t === "custom" && "Custom"}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs uppercase text-muted-foreground">Price up to (Original)</Label>
+                <Slider value={[priceRange[1]]} min={0} max={50000} step={500} onValueChange={(v) => setPriceRange([0, v[0] as number])} />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>₹0</span>
+                  <span>₹{priceRange[1]}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button className="flex-1" onClick={() => setFilterOpen(false)}>Apply</Button>
+                <Button variant="outline" className="flex-1" onClick={() => { setTypeFilters({ buy1get1:false, buy2get1:false, "50percent":false, custom:false }); setPriceRange([0, 30000]); }}>Reset</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Near Me Panel */}
+        {nearOpen && (
+          <div className="px-4">
+            <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium">Show offers within {nearKm} km</p>
+                <Button variant="ghost" size="sm" onClick={() => setNearOpen(false)}>Close</Button>
+              </div>
+              <div className="py-2">
+                <Slider value={[nearKm]} min={1} max={25} step={1} onValueChange={(v) => setNearKm(v[0] as number)} />
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>1 km</span>
+                  <span>25 km</span>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <Button className="flex-1" onClick={() => { setNearEnabled(true); setNearOpen(false); }}>Apply</Button>
+                <Button variant="outline" className="flex-1" onClick={() => { setNearEnabled(false); setNearOpen(false); }}>Reset</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Offers Feed */}
         <div className="px-4 space-y-6">
-          {offers.map((offer) => (
+          {(() => {
+            const bySearch = (searchQuery.trim() ? offers.filter(o => [o.title, o.description, o.location].some(v => (v || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))) : offers);
+            const byNear = bySearch.filter(o => {
+              if (!nearEnabled) return true;
+              const km = parseFloat((o.distance || '').toString());
+              return !isNaN(km) && km <= nearKm;
+            });
+            const selectedTypes = Object.entries(typeFilters).filter(([,v]) => v).map(([k]) => k);
+            const byType = selectedTypes.length ? byNear.filter(o => selectedTypes.includes(o.offerType)) : byNear;
+            const byPrice = byType.filter(o => {
+              const price = parseFloat((o.originalPrice || '0').toString());
+              return !isNaN(price) && price >= priceRange[0] && price <= priceRange[1];
+            });
+            return byPrice;
+          })().map((offer) => (
             <div key={offer.id} className="fade-in">
               <OfferCard
                 offer={offer}
@@ -182,6 +275,24 @@ export function Home() {
               />
             </div>
           ))}
+
+          {(() => {
+            const bySearch = (searchQuery.trim() ? offers.filter(o => [o.title, o.description, o.location].some(v => (v || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))) : offers);
+            const byNear = bySearch.filter(o => {
+              if (!nearEnabled) return true;
+              const km = parseFloat((o.distance || '').toString());
+              return !isNaN(km) && km <= nearKm;
+            });
+            const selectedTypes = Object.entries(typeFilters).filter(([,v]) => v).map(([k]) => k);
+            const byType = selectedTypes.length ? byNear.filter(o => selectedTypes.includes(o.offerType)) : byNear;
+            const byPrice = byType.filter(o => {
+              const price = parseFloat((o.originalPrice || '0').toString());
+              return !isNaN(price) && price >= priceRange[0] && price <= priceRange[1];
+            });
+            return (searchQuery.trim() || nearEnabled || selectedTypes.length || priceRange[1] !== 30000) && byPrice.length === 0;
+          })() && (
+            <p className="text-center text-sm text-muted-foreground py-8">No offers match your filters.</p>
+          )}
 
           {/* Load More Button */}
           <div className="flex justify-center py-8">

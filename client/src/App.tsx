@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -11,7 +12,10 @@ import { CreateOffer } from "@/pages/CreateOffer";
 import { Chat } from "@/pages/Chat";
 import { Profile } from "@/pages/Profile";
 import { Auth } from "@/pages/Auth";
+import Map from "@/pages/Map";
 import NotFound from "@/pages/not-found";
+import Splash from "@/components/Splash";
+import RequestDetails from "@/pages/RequestDetails";
 
 function AppContent() {
   const { user, loading, error } = useAuth();
@@ -52,14 +56,8 @@ function AppContent() {
         <Route path="/create" component={CreateOffer} />
         <Route path="/chats" component={Chat} />
         <Route path="/chat/:id" component={Chat} />
-        <Route path="/wallet">
-          <div className="max-w-md mx-auto bg-background min-h-screen flex items-center justify-center pb-20">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold mb-4">Wallet</h2>
-              <p className="text-muted-foreground">Coming soon...</p>
-            </div>
-          </div>
-        </Route>
+        <Route path="/map" component={Map} />
+        <Route path="/requests/:id" component={RequestDetails} />
         <Route path="/profile" component={Profile} />
         <Route component={NotFound} />
       </Switch>
@@ -69,6 +67,20 @@ function AppContent() {
 }
 
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setShowSplash(false), 2200);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (showSplash) {
+    return (
+      <ThemeProvider>
+        <Splash />
+      </ThemeProvider>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>

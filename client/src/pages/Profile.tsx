@@ -8,13 +8,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Star, MapPin, Calendar, ShoppingBag, MessageCircle, LogOut, Sun, Moon } from "lucide-react";
+import { Star, Calendar, ShoppingBag, MessageCircle, LogOut, Sun, Moon } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export function Profile() {
   const { user } = useAuth();
   const { theme, toggleTheme } = useThemeContext();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [photo, setPhoto] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const handleSignOut = async () => {
     setLoading(true);
@@ -44,7 +53,7 @@ export function Profile() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen pb-20">
+    <div className="max-w-md mx-auto bg-background min-h-screen pb-[calc(env(safe-area-inset-bottom)+88px)]" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="p-4 space-y-6">
         {/* Profile Header */}
         <Card>
@@ -77,7 +86,7 @@ export function Profile() {
               <span data-testid="text-member-since">Member since {userStats.memberSince}</span>
             </div>
 
-            <Button className="w-full" variant="outline" data-testid="button-edit-profile">
+            <Button className="w-full" variant="outline" data-testid="button-edit-profile" onClick={() => { setName(user?.displayName || ""); setPhoto(user?.photoURL || ""); setEditOpen(true); }}>
               Edit Profile
             </Button>
           </CardContent>
@@ -152,13 +161,13 @@ export function Profile() {
                 </>
               )}
             </Button>
-            <Button variant="ghost" className="w-full justify-start" data-testid="button-settings">
+            <Button variant="ghost" className="w-full justify-start" data-testid="button-settings" onClick={() => setSettingsOpen(true)}>
               Settings & Privacy
             </Button>
-            <Button variant="ghost" className="w-full justify-start" data-testid="button-help">
+            <Button variant="ghost" className="w-full justify-start" data-testid="button-help" onClick={() => window.open('mailto:support@offeshare.example?subject=Support') }>
               Help & Support
             </Button>
-            <Button variant="ghost" className="w-full justify-start" data-testid="button-about">
+            <Button variant="ghost" className="w-full justify-start" data-testid="button-about" onClick={() => setAboutOpen(true)}>
               About OfferShare
             </Button>
             <Button
@@ -174,6 +183,135 @@ export function Profile() {
           </CardContent>
         </Card>
       </div>
+      {/* Edit Profile Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-[92vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm mb-1 block">Display name</label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+            </div>
+            <div>
+              <label className="text-sm mb-1 block">Profile photo</label>
+              <div className="flex items-center gap-3">
+                <div>
+                  <Avatar className="w-16 h-16">
+                    <AvatarImage src={photoPreview || photo || user?.photoURL || ""} alt={user?.displayName || ""} />
+                    <AvatarFallback className="text-xl">{(name || user?.displayName || user?.email || "U")[0]}</AvatarFallback>
+                  </Avatar>
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const f = e.target.files && e.target.files[0];
+                      if (f) {
+                        setSelectedFile(f);
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          setPhotoPreview(reader.result as string);
+                        };
+                        reader.readAsDataURL(f);
+                      } else {
+                        setSelectedFile(null);
+                        setPhotoPreview(null);
+                      }
+                    }}
+                    className="block w-full"
+                    data-testid="input-profile-photo"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Upload a JPG/PNG photo. The image will be uploaded to storage if available.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={async () => {
+              try {
+                if (!user) return;
+
+                let photoUrlToSave: string | null = photo || null;
+
+                // If a new file was selected, try to upload it to Firebase Storage (if configured)
+                if (selectedFile) {
+                  try {
+                    const { isFirebaseConfigured, storage } = await import('@/lib/firebase');
+                    if (isFirebaseConfigured && storage) {
+                      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+                      const storageRef = ref(storage, `profiles/${user.uid}/${Date.now()}_${selectedFile.name}`);
+                      await uploadBytes(storageRef, selectedFile);
+                      photoUrlToSave = await getDownloadURL(storageRef);
+                    } else {
+                      // No storage available: use the client-side data URL preview
+                      photoUrlToSave = photoPreview as string;
+                    }
+                  } catch (uploadErr) {
+                    console.warn('Photo upload failed, falling back to preview/data URL', uploadErr);
+                    photoUrlToSave = photoPreview as string;
+                  }
+                }
+
+                // Update Firebase profile (auth)
+                const { updateProfile } = await import('firebase/auth');
+                await updateProfile(user, { displayName: name || null, photoURL: photoUrlToSave || null });
+
+                // Ensure/get backend user id then patch
+                try {
+                  const res1 = await fetch('/api/users/ensure', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firebaseUid: user.uid, email: user.email, displayName: name || user.email || 'User', photoUrl: photoUrlToSave }) });
+                  if (res1.ok) {
+                    const bu = await res1.json();
+                    await fetch(`/api/users/${bu.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ displayName: name, photoUrl: photoUrlToSave }) });
+                  }
+                } catch (e) {
+                  console.warn('Backend update failed', e);
+                }
+
+                toast({ title: 'Profile updated' });
+                setEditOpen(false);
+              } catch (e: any) {
+                toast({ title: 'Update failed', description: e.message || 'Could not update profile', variant: 'destructive' });
+              }
+            }}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Settings Dialog */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="max-w-[92vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Settings & Privacy</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p>Notifications and privacy controls will be available soon.</p>
+            <p>Theme: <span className="font-medium">{theme}</span></p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setSettingsOpen(false)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* About Dialog */}
+      <Dialog open={aboutOpen} onOpenChange={setAboutOpen}>
+        <DialogContent className="max-w-[92vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>About OfferShare</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <p>Version 1.0.0</p>
+            <p>A community-driven way to split deals and save together.</p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setAboutOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

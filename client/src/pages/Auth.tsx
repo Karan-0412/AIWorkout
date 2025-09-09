@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, isFirebaseConfigured } from "@/lib/firebase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,17 @@ export function Auth() {
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    if (!isFirebaseConfigured || !auth) {
+      toast({
+        title: "Firebase not configured",
+        description:
+          "Authentication is not available because Firebase VITE_* env vars are not set. Provide them or connect a provider.",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
 
     try {
       if (isSignUp) {
@@ -72,6 +83,16 @@ export function Auth() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (!isFirebaseConfigured || !auth) {
+      const { toast } = useToast();
+      toast({
+        title: "Firebase not configured",
+        description: "Google sign-in is not available in this environment.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
@@ -119,6 +140,12 @@ export function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {!isFirebaseConfigured && (
+            <div className="p-3 rounded bg-yellow-50 text-yellow-800 text-sm text-center">
+              Firebase is not configured. Authentication is disabled. Set VITE_FIREBASE_* env vars to enable it.
+            </div>
+          )}
+
           <form onSubmit={handleEmailAuth} className="space-y-4">
             {isSignUp && (
               <div className="space-y-2">

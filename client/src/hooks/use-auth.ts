@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { User } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, isFirebaseConfigured } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
 export function useAuth() {
@@ -9,27 +9,19 @@ export function useAuth() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const unsubscribe = onAuthStateChanged(
-        auth, 
-        (user) => {
-          setUser(user);
-          setLoading(false);
-          setError(null);
-        },
-        (error) => {
-          console.error('Auth state change error:', error);
-          setError(error.message);
-          setLoading(false);
-        }
-      );
-
-      return unsubscribe;
-    } catch (error: any) {
-      console.error('Auth initialization error:', error);
-      setError(error.message);
+    if (!isFirebaseConfigured || !auth) {
+      // Firebase not configured: skip subscribing and mark loading as false so the app can render the Auth screen.
       setLoading(false);
+      setUser(null);
+      return;
     }
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
+
+    return unsubscribe;
   }, []);
 
   return { user, loading, error };
