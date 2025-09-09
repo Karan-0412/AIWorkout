@@ -48,6 +48,19 @@ export const joinRequests = pgTable("join_requests", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Map requests table for user-posted requests to be shown on the map
+export const requests = pgTable("requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
+  title: text("title").notNull(),
+  type: text("type").notNull(), // "service", "product", "help"
+  category: text("category").notNull(), // e.g., "Food", "Electronics", "Fitness", "Other"
+  imageUrl: text("image_url"),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }).notNull(),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const chats = pgTable("chats", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   offerId: varchar("offer_id").notNull().references(() => offers.id),
@@ -101,6 +114,11 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
   createdAt: true,
 });
 
+export const insertRequestSchema = createInsertSchema(requests).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertRatingSchema = createInsertSchema(ratings).omit({
   id: true,
   createdAt: true,
@@ -118,3 +136,5 @@ export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Rating = typeof ratings.$inferSelect;
 export type InsertRating = z.infer<typeof insertRatingSchema>;
+export type Request = typeof requests.$inferSelect;
+export type InsertRequest = z.infer<typeof insertRequestSchema>;

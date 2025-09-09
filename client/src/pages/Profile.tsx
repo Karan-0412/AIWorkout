@@ -8,13 +8,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Star, MapPin, Calendar, ShoppingBag, MessageCircle, LogOut, Sun, Moon } from "lucide-react";
+import { Star, Calendar, ShoppingBag, MessageCircle, LogOut, Sun, Moon } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export function Profile() {
   const { user } = useAuth();
   const { theme, toggleTheme } = useThemeContext();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [photo, setPhoto] = useState("");
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const handleSignOut = async () => {
     setLoading(true);
@@ -77,7 +84,7 @@ export function Profile() {
               <span data-testid="text-member-since">Member since {userStats.memberSince}</span>
             </div>
 
-            <Button className="w-full" variant="outline" data-testid="button-edit-profile">
+            <Button className="w-full" variant="outline" data-testid="button-edit-profile" onClick={() => { setName(user?.displayName || ""); setPhoto(user?.photoURL || ""); setEditOpen(true); }}>
               Edit Profile
             </Button>
           </CardContent>
@@ -152,13 +159,13 @@ export function Profile() {
                 </>
               )}
             </Button>
-            <Button variant="ghost" className="w-full justify-start" data-testid="button-settings">
+            <Button variant="ghost" className="w-full justify-start" data-testid="button-settings" onClick={() => setSettingsOpen(true)}>
               Settings & Privacy
             </Button>
-            <Button variant="ghost" className="w-full justify-start" data-testid="button-help">
+            <Button variant="ghost" className="w-full justify-start" data-testid="button-help" onClick={() => window.open('mailto:support@offeshare.example?subject=Support') }>
               Help & Support
             </Button>
-            <Button variant="ghost" className="w-full justify-start" data-testid="button-about">
+            <Button variant="ghost" className="w-full justify-start" data-testid="button-about" onClick={() => setAboutOpen(true)}>
               About OfferShare
             </Button>
             <Button
@@ -174,6 +181,79 @@ export function Profile() {
           </CardContent>
         </Card>
       </div>
+      {/* Edit Profile Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm mb-1 block">Display name</label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+            </div>
+            <div>
+              <label className="text-sm mb-1 block">Photo URL</label>
+              <Input value={photo} onChange={(e) => setPhoto(e.target.value)} placeholder="https://..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={async () => {
+              try {
+                if (!user) return;
+                // Update Firebase profile
+                const { updateProfile } = await import('firebase/auth');
+                await updateProfile(user, { displayName: name || null, photoURL: photo || null });
+                // Ensure/get backend user id then patch
+                try {
+                  const res1 = await fetch('/api/users/ensure', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firebaseUid: user.uid, email: user.email, displayName: name || user.email || 'User', photoUrl: photo }) });
+                  if (res1.ok) {
+                    const bu = await res1.json();
+                    await fetch(`/api/users/${bu.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ displayName: name, photoUrl: photo }) });
+                  }
+                } catch {}
+                toast({ title: 'Profile updated' });
+                setEditOpen(false);
+              } catch (e: any) {
+                toast({ title: 'Update failed', description: e.message || 'Could not update profile', variant: 'destructive' });
+              }
+            }}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Settings Dialog */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Settings & Privacy</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p>Notifications and privacy controls will be available soon.</p>
+            <p>Theme: <span className="font-medium">{theme}</span></p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setSettingsOpen(false)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* About Dialog */}
+      <Dialog open={aboutOpen} onOpenChange={setAboutOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>About OfferShare</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <p>Version 1.0.0</p>
+            <p>A community-driven way to split deals and save together.</p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setAboutOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

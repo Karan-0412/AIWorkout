@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Offer, type InsertOffer, type JoinRequest, type InsertJoinRequest, type Chat, type Message, type InsertMessage, type Rating, type InsertRating, users, offers, joinRequests, chats, messages, ratings } from "@shared/schema";
+import { type User, type InsertUser, type Offer, type InsertOffer, type JoinRequest, type InsertJoinRequest, type Chat, type Message, type InsertMessage, type Rating, type InsertRating, type Request as MapRequest, type InsertRequest, users, offers, joinRequests, chats, messages, ratings, requests } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { eq, desc, and, or, not } from "drizzle-orm";
@@ -16,6 +16,11 @@ export interface IStorage {
   getOffer(id: string): Promise<Offer | undefined>;
   getOffers(filters?: { location?: string; status?: string; limit?: number }): Promise<Offer[]>;
   updateOffer(id: string, updates: Partial<Offer>): Promise<Offer | undefined>;
+
+  // Map Request operations
+  createRequest(request: InsertRequest): Promise<MapRequest>;
+  getRequest(id: string): Promise<MapRequest | undefined>;
+  getRequests(): Promise<MapRequest[]>;
 
   // Join request operations
   createJoinRequest(joinRequest: InsertJoinRequest): Promise<JoinRequest>;
@@ -79,15 +84,15 @@ export class DatabaseStorage implements IStorage {
 
   async getOffers(filters: { location?: string; status?: string; limit?: number } = {}): Promise<Offer[]> {
     let query = db.select().from(offers).orderBy(desc(offers.createdAt));
-    
+
     if (filters.status) {
       query = query.where(eq(offers.status, filters.status));
     }
-    
+
     if (filters.limit) {
       query = query.limit(filters.limit);
     }
-    
+
     return await query;
   }
 
@@ -98,6 +103,21 @@ export class DatabaseStorage implements IStorage {
       .where(eq(offers.id, id))
       .returning();
     return result[0];
+  }
+
+  // Map Request operations
+  async createRequest(insertRequest: InsertRequest): Promise<MapRequest> {
+    const result = await db.insert(requests).values(insertRequest).returning();
+    return result[0];
+  }
+
+  async getRequest(id: string): Promise<MapRequest | undefined> {
+    const result = await db.select().from(requests).where(eq(requests.id, id));
+    return result[0];
+  }
+
+  async getRequests(): Promise<MapRequest[]> {
+    return await db.select().from(requests).orderBy(desc(requests.createdAt));
   }
 
   // Join request operations
