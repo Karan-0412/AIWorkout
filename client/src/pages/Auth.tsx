@@ -97,6 +97,12 @@ export function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {!isFirebaseConfigured && (
+            <div className="p-3 rounded bg-yellow-50 text-yellow-800 text-sm text-center">
+              Firebase is not configured. Authentication is disabled. Set VITE_FIREBASE_* env vars to enable it.
+            </div>
+          )}
+
           <form onSubmit={handleEmailAuth} className="space-y-4">
             {isSignUp && (
               <div className="space-y-2">
