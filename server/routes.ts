@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { insertOfferSchema, insertJoinRequestSchema, insertMessageSchema } from "@shared/schema";
+import { insertOfferSchema, insertJoinRequestSchema, insertMessageSchema, insertRequestSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -92,6 +92,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(user);
     } catch (error) {
       res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  app.patch("/api/users/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateUser(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ message: "User not found" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update user" });
     }
   });
 
@@ -194,6 +204,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(joinRequests);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch join requests" });
+    }
+  });
+
+  // Requests routes
+  app.get("/api/requests", async (_req, res) => {
+    try {
+      const requests = await storage.getRequests();
+      res.json(requests);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch requests" });
+    }
+  });
+
+  app.get("/api/requests/:id", async (req, res) => {
+    try {
+      const request = await storage.getRequest(req.params.id);
+      if (!request) return res.status(404).json({ message: "Request not found" });
+      res.json(request);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch request" });
+    }
+  });
+
+  app.post("/api/requests", async (req, res) => {
+    try {
+      const result = insertRequestSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: "Invalid request data", errors: result.error.errors });
+      }
+      const created = await storage.createRequest(result.data);
+      res.status(201).json(created);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create request" });
     }
   });
 

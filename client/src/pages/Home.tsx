@@ -4,6 +4,8 @@ import { Search, Filter, MapPin, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { OfferCard } from "@/components/OfferCard";
 import { JoinOfferBottomSheet } from "@/components/JoinOfferBottomSheet";
 import { useThemeContext } from "@/components/ThemeProvider";
@@ -18,6 +20,14 @@ export function Home() {
   const [nearOpen, setNearOpen] = useState(false);
   const [nearKm, setNearKm] = useState<number>(5);
   const [nearEnabled, setNearEnabled] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [typeFilters, setTypeFilters] = useState<{ [k: string]: boolean }>({
+    buy1get1: false,
+    buy2get1: false,
+    "50percent": false,
+    custom: false,
+  });
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 30000]);
   const { theme, toggleTheme } = useThemeContext();
   const { toast } = useToast();
 
@@ -135,9 +145,10 @@ export function Home() {
             <h2 className="text-lg font-semibold" data-testid="text-feed-title">Active Offers</h2>
             <div className="flex items-center space-x-2">
               <Button
-                variant="secondary"
+                variant={filterOpen ? "default" : "secondary"}
                 size="sm"
-                className="px-3 py-1.5 text-sm rounded-full hover:bg-accent/20 transition-colors"
+                className="px-3 py-1.5 text-sm rounded-full transition-colors"
+                onClick={() => setFilterOpen(v => !v)}
                 data-testid="button-filter"
               >
                 <Filter className="w-3 h-3 mr-1" />
@@ -171,6 +182,52 @@ export function Home() {
           </div>
         </div>
 
+        {/* Filter Panel */}
+        {filterOpen && (
+          <div className="px-4">
+            <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Filter offers</p>
+                <Button variant="ghost" size="sm" onClick={() => setFilterOpen(false)}>Close</Button>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs uppercase text-muted-foreground">Offer types</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["buy1get1","buy2get1","50percent","custom"] as const).map((t) => (
+                    <label key={t} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={typeFilters[t]}
+                        onCheckedChange={(v) => setTypeFilters(prev => ({ ...prev, [t]: Boolean(v) }))}
+                      />
+                      <span>
+                        {t === "buy1get1" && "Buy 1 Get 1"}
+                        {t === "buy2get1" && "Buy 2 Get 1"}
+                        {t === "50percent" && "50% Off 2nd"}
+                        {t === "custom" && "Custom"}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs uppercase text-muted-foreground">Price up to (Original)</Label>
+                <Slider value={[priceRange[1]]} min={0} max={50000} step={500} onValueChange={(v) => setPriceRange([0, v[0] as number])} />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>₹0</span>
+                  <span>₹{priceRange[1]}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button className="flex-1" onClick={() => setFilterOpen(false)}>Apply</Button>
+                <Button variant="outline" className="flex-1" onClick={() => { setTypeFilters({ buy1get1:false, buy2get1:false, "50percent":false, custom:false }); setPriceRange([0, 30000]); }}>Reset</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Near Me Panel */}
         {nearOpen && (
           <div className="px-4">
@@ -196,14 +253,21 @@ export function Home() {
 
         {/* Offers Feed */}
         <div className="px-4 space-y-6">
-          {(
-            (searchQuery.trim() ? offers.filter(o => [o.title, o.description, o.location].some(v => (v || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))) : offers)
-              .filter(o => {
-                if (!nearEnabled) return true;
-                const km = parseFloat((o.distance || "").toString());
-                return !isNaN(km) && km <= nearKm;
-              })
-          ).map((offer) => (
+          {(() => {
+            const bySearch = (searchQuery.trim() ? offers.filter(o => [o.title, o.description, o.location].some(v => (v || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))) : offers);
+            const byNear = bySearch.filter(o => {
+              if (!nearEnabled) return true;
+              const km = parseFloat((o.distance || '').toString());
+              return !isNaN(km) && km <= nearKm;
+            });
+            const selectedTypes = Object.entries(typeFilters).filter(([,v]) => v).map(([k]) => k);
+            const byType = selectedTypes.length ? byNear.filter(o => selectedTypes.includes(o.offerType)) : byNear;
+            const byPrice = byType.filter(o => {
+              const price = parseFloat((o.originalPrice || '0').toString());
+              return !isNaN(price) && price >= priceRange[0] && price <= priceRange[1];
+            });
+            return byPrice;
+          })().map((offer) => (
             <div key={offer.id} className="fade-in">
               <OfferCard
                 offer={offer}
@@ -212,15 +276,22 @@ export function Home() {
             </div>
           ))}
 
-          {(searchQuery.trim() || nearEnabled) && (
-            (searchQuery.trim() ? offers.filter(o => [o.title, o.description, o.location].some(v => (v || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))) : offers)
-              .filter(o => {
-                if (!nearEnabled) return true;
-                const km = parseFloat((o.distance || "").toString());
-                return !isNaN(km) && km <= nearKm;
-              }).length === 0
-          ) && (
-            <p className="text-center text-sm text-muted-foreground py-8">No offers in this range.</p>
+          {(() => {
+            const bySearch = (searchQuery.trim() ? offers.filter(o => [o.title, o.description, o.location].some(v => (v || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))) : offers);
+            const byNear = bySearch.filter(o => {
+              if (!nearEnabled) return true;
+              const km = parseFloat((o.distance || '').toString());
+              return !isNaN(km) && km <= nearKm;
+            });
+            const selectedTypes = Object.entries(typeFilters).filter(([,v]) => v).map(([k]) => k);
+            const byType = selectedTypes.length ? byNear.filter(o => selectedTypes.includes(o.offerType)) : byNear;
+            const byPrice = byType.filter(o => {
+              const price = parseFloat((o.originalPrice || '0').toString());
+              return !isNaN(price) && price >= priceRange[0] && price <= priceRange[1];
+            });
+            return (searchQuery.trim() || nearEnabled || selectedTypes.length || priceRange[1] !== 30000) && byPrice.length === 0;
+          })() && (
+            <p className="text-center text-sm text-muted-foreground py-8">No offers match your filters.</p>
           )}
 
           {/* Load More Button */}
