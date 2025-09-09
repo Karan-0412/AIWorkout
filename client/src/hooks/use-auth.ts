@@ -6,15 +6,31 @@ import { onAuthStateChanged } from "firebase/auth";
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
+    try {
+      const unsubscribe = onAuthStateChanged(
+        auth, 
+        (user) => {
+          setUser(user);
+          setLoading(false);
+          setError(null);
+        },
+        (error) => {
+          console.error('Auth state change error:', error);
+          setError(error.message);
+          setLoading(false);
+        }
+      );
 
-    return unsubscribe;
+      return unsubscribe;
+    } catch (error: any) {
+      console.error('Auth initialization error:', error);
+      setError(error.message);
+      setLoading(false);
+    }
   }, []);
 
-  return { user, loading };
+  return { user, loading, error };
 }

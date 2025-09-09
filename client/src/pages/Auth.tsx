@@ -36,9 +36,34 @@ export function Auth() {
         });
       }
     } catch (error: any) {
+      console.error('Email auth error:', error);
+      let errorMessage = "An unexpected error occurred";
+      
+      // Handle specific Firebase Auth errors
+      switch (error.code) {
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+          errorMessage = "Invalid email or password";
+          break;
+        case 'auth/email-already-in-use':
+          errorMessage = "Email is already registered";
+          break;
+        case 'auth/weak-password':
+          errorMessage = "Password should be at least 6 characters";
+          break;
+        case 'auth/invalid-email':
+          errorMessage = "Invalid email address";
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = "Too many failed attempts. Please try again later";
+          break;
+        default:
+          errorMessage = error.message || "Authentication failed";
+      }
+      
       toast({
         title: "Authentication error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -56,9 +81,27 @@ export function Auth() {
         description: "Welcome to OfferShare",
       });
     } catch (error: any) {
+      console.error('Google sign-in error:', error);
+      let errorMessage = "Google sign-in failed";
+      
+      // Handle specific Google Auth errors
+      switch (error.code) {
+        case 'auth/popup-closed-by-user':
+          errorMessage = "Sign-in was cancelled";
+          break;
+        case 'auth/popup-blocked':
+          errorMessage = "Popup blocked. Please allow popups for this site";
+          break;
+        case 'auth/account-exists-with-different-credential':
+          errorMessage = "An account already exists with this email using a different sign-in method";
+          break;
+        default:
+          errorMessage = error.message || "Google sign-in failed";
+      }
+      
       toast({
         title: "Google sign-in error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
