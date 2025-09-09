@@ -20,6 +20,8 @@ export function Profile() {
   const [editOpen, setEditOpen] = useState(false);
   const [name, setName] = useState("");
   const [photo, setPhoto] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
