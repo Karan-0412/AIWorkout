@@ -41,7 +41,7 @@ function ChatsList() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const [backendUser, setBackendUser] = useState<any>();
-  const [chats, setChats] = useState<ChatItem[]>([]);
+  const [chats, setChats] = useState<ChatDisplay[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -51,17 +51,35 @@ function ChatsList() {
         setBackendUser(u);
         const res = await fetch(`/api/users/${u.id}/chats`);
         if (res.ok) {
-          setChats(await res.json());
+          const rawChats: ChatItem[] = await res.json();
+
+          // Fetch participant info for each chat (the other user)
+          const enriched = await Promise.all(
+            rawChats.map(async (ch): Promise<ChatDisplay> => {
+              try {
+                const otherId = ch.user1Id === u.id ? ch.user2Id : ch.user1Id;
+                if (!otherId) return { id: ch.id, lastMessage: ch.lastMessage, lastMessageAt: ch.lastMessageAt };
+                const pRes = await fetch(`/api/users/${otherId}`);
+                if (pRes.ok) {
+                  const participant = await pRes.json();
+                  return { id: ch.id, lastMessage: ch.lastMessage, lastMessageAt: ch.lastMessageAt, participant: { id: participant.id, displayName: participant.displayName, photoUrl: participant.photoUrl } };
+                }
+              } catch {}
+              return { id: ch.id, lastMessage: ch.lastMessage, lastMessageAt: ch.lastMessageAt };
+            })
+          );
+
+          setChats(enriched);
         } else {
           setChats([
-            { id: "sample-1", lastMessage: "Hey! Interested in the offer?", lastMessageAt: new Date().toISOString() },
-            { id: "sample-2", lastMessage: "Can we meet near MG Road?", lastMessageAt: new Date(Date.now() - 3600_000).toISOString() },
+            { id: "sample-1", lastMessage: "Hey! Interested in the offer?", lastMessageAt: new Date().toISOString(), participant: { id: 'sample-user', displayName: 'Alice' } },
+            { id: "sample-2", lastMessage: "Can we meet near MG Road?", lastMessageAt: new Date(Date.now() - 3600_000).toISOString(), participant: { id: 'sample-user-2', displayName: 'Bob' } },
           ]);
         }
       } catch {
         setChats([
-          { id: "sample-1", lastMessage: "Hey! Interested in the offer?", lastMessageAt: new Date().toISOString() },
-          { id: "sample-2", lastMessage: "Can we meet near MG Road?", lastMessageAt: new Date(Date.now() - 3600_000).toISOString() },
+          { id: "sample-1", lastMessage: "Hey! Interested in the offer?", lastMessageAt: new Date().toISOString(), participant: { id: 'sample-user', displayName: 'Alice' } },
+          { id: "sample-2", lastMessage: "Can we meet near MG Road?", lastMessageAt: new Date(Date.now() - 3600_000).toISOString(), participant: { id: 'sample-user-2', displayName: 'Bob' } },
         ]);
       }
     })();
@@ -76,9 +94,15 @@ function ChatsList() {
         {chats.map((c) => (
           <button key={c.id} onClick={() => navigate(`/chat/${c.id}`)} className="w-full text-left p-4 rounded-xl border border-border bg-card hover:bg-accent/10">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Chat</p>
-                <p className="text-sm text-muted-foreground line-clamp-1">{c.lastMessage || "No messages yet"}</p>
+              <div className="flex items-center gap-3">
+                <Avatar className="w-10 h-10">
+                  <AvatarImage src={c.participant?.photoUrl || ""} alt={c.participant?.displayName || "User"} />
+                  <AvatarFallback>{(c.participant?.displayName || "U")[0]}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{c.participant?.displayName || "Chat"}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-1">{c.lastMessage || "No messages yet"}</p>
+                </div>
               </div>
               <span className="text-xs text-muted-foreground">{c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleTimeString() : ""}</span>
             </div>
