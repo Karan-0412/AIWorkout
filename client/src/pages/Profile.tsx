@@ -195,8 +195,38 @@ export function Profile() {
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
             </div>
             <div>
-              <label className="text-sm mb-1 block">Photo URL</label>
-              <Input value={photo} onChange={(e) => setPhoto(e.target.value)} placeholder="https://..." />
+              <label className="text-sm mb-1 block">Profile photo</label>
+              <div className="flex items-center gap-3">
+                <div>
+                  <Avatar className="w-16 h-16">
+                    <AvatarImage src={photoPreview || photo || user?.photoURL || ""} alt={user?.displayName || ""} />
+                    <AvatarFallback className="text-xl">{(name || user?.displayName || user?.email || "U")[0]}</AvatarFallback>
+                  </Avatar>
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const f = e.target.files && e.target.files[0];
+                      if (f) {
+                        setSelectedFile(f);
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          setPhotoPreview(reader.result as string);
+                        };
+                        reader.readAsDataURL(f);
+                      } else {
+                        setSelectedFile(null);
+                        setPhotoPreview(null);
+                      }
+                    }}
+                    className="block w-full"
+                    data-testid="input-profile-photo"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Upload a JPG/PNG photo. The image will be uploaded to storage if available.</p>
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>
