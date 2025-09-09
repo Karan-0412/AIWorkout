@@ -172,6 +172,8 @@ function ChatRoom({ chatId }: { chatId: string }) {
     })();
   }, [user, chatId]);
 
+  const { notify } = useNotifier();
+
   useEffect(() => {
     const ws = wsRef.current;
     if (!ws) return;
@@ -181,7 +183,6 @@ function ChatRoom({ chatId }: { chatId: string }) {
         if (data.type === "new_message") {
           setMessages((m) => [...m, data.message]);
 
-          // fetch participant for the sender if unknown
           const sid = data.message?.senderId;
           if (sid && sid !== backendUser?.id && sid !== 'me' && !participants[sid]) {
             (async () => {
@@ -190,6 +191,26 @@ function ChatRoom({ chatId }: { chatId: string }) {
                 if (r.ok) {
                   const p = await r.json();
                   setParticipants(prev => ({ ...prev, [sid]: { displayName: p.displayName, photoUrl: p.photoUrl } }));
+
+                  // Show notification if window not focused or user is not in this chat
+                  const title = p.displayName || 'New message';
+                  const body = data.message.content?.slice(0, 120) || 'You have a new message';
+                  const icon = p.photoUrl || undefined;
+
+                  const shouldNotify = document.hidden || true; // always notify for demo; refine as needed
+                  if (shouldNotify) {
+                    notify({
+                      title,
+                      body,
+                      icon,
+                      onClick: () => {
+                        window.focus();
+                        // navigate to the chat
+                        try { window.location.href = `/chat/${data.message.chatId}`; } catch (e) {}
+                      },
+                      ttl: 10000,
+                    });
+                  }
                 }
               } catch {}
             })();
@@ -197,7 +218,7 @@ function ChatRoom({ chatId }: { chatId: string }) {
         }
       } catch {}
     };
-  }, [wsRef, backendUser, participants]);
+  }, [wsRef, backendUser, participants, notify]);
 
   const handleSend = async () => {
     const text = message.trim();
