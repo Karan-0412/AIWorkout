@@ -120,6 +120,7 @@ function ChatRoom({ chatId }: { chatId: string }) {
   const [backendUser, setBackendUser] = useState<any>();
   const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState("");
+  const [participants, setParticipants] = useState<Record<string, { displayName?: string; photoUrl?: string | null }>>({});
   const [attachments, setAttachments] = useState<{ id: string; url: string; name: string; type: 'image' | 'file' }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wsRef = useWs(backendUser?.id);
@@ -135,6 +136,22 @@ function ChatRoom({ chatId }: { chatId: string }) {
           const serverMsgs: Message[] = await res.json();
           setMessages(serverMsgs.map(m => ({ ...m, status: m.isRead ? 'read' : 'delivered' })));
           fetch(`/api/chats/${chatId}/mark-read`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: u.id }) });
+
+          // Fetch participant info for message senders (excluding current user)
+          const senderIds = Array.from(new Set(serverMsgs.map(m => m.senderId).filter(id => id && id !== u.id && id !== 'me')));
+          if (senderIds.length > 0) {
+            const map: Record<string, { displayName?: string; photoUrl?: string | null }> = {};
+            await Promise.all(senderIds.map(async (sid) => {
+              try {
+                const r = await fetch(`/api/users/${sid}`);
+                if (r.ok) {
+                  const p = await r.json();
+                  map[sid] = { displayName: p.displayName, photoUrl: p.photoUrl };
+                }
+              } catch {}
+            }));
+            if (Object.keys(map).length) setParticipants(prev => ({ ...prev, ...map }));
+          }
         } else {
           setMessages([
             { id: "m1", chatId, senderId: "other", content: "Hi! I'm interested in splitting this deal." },
@@ -162,10 +179,24 @@ function ChatRoom({ chatId }: { chatId: string }) {
         const data = JSON.parse(evt.data);
         if (data.type === "new_message") {
           setMessages((m) => [...m, data.message]);
+
+          // fetch participant for the sender if unknown
+          const sid = data.message?.senderId;
+          if (sid && sid !== backendUser?.id && sid !== 'me' && !participants[sid]) {
+            (async () => {
+              try {
+                const r = await fetch(`/api/users/${sid}`);
+                if (r.ok) {
+                  const p = await r.json();
+                  setParticipants(prev => ({ ...prev, [sid]: { displayName: p.displayName, photoUrl: p.photoUrl } }));
+                }
+              } catch {}
+            })();
+          }
         }
       } catch {}
     };
-  }, [wsRef]);
+  }, [wsRef, backendUser, participants]);
 
   const handleSend = async () => {
     const text = message.trim();
@@ -231,7 +262,10 @@ function ChatRoom({ chatId }: { chatId: string }) {
           return (
             <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
               {!isMe && (
-                <Avatar className="w-8 h-8 shrink-0"><AvatarFallback>U</AvatarFallback></Avatar>
+                <Avatar className="w-8 h-8 shrink-0">
+                  <AvatarImage src={participants[msg.senderId]?.photoUrl || ""} alt={participants[msg.senderId]?.displayName || msg.senderId} />
+                  <AvatarFallback>{(participants[msg.senderId]?.displayName?.[0] || msg.senderId?.[0] || "U").toUpperCase()}</AvatarFallback>
+                </Avatar>
               )}
               <div className={`max-w-[70%] ${isMe ? 'items-end text-right' : ''}`}>
                 <div className={`relative rounded-2xl shadow ${isMe ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-card border border-border rounded-bl-sm'}`}>
