@@ -234,17 +234,43 @@ export function Profile() {
             <Button onClick={async () => {
               try {
                 if (!user) return;
-                // Update Firebase profile
+
+                let photoUrlToSave: string | null = photo || null;
+
+                // If a new file was selected, try to upload it to Firebase Storage (if configured)
+                if (selectedFile) {
+                  try {
+                    const { isFirebaseConfigured, storage } = await import('@/lib/firebase');
+                    if (isFirebaseConfigured && storage) {
+                      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+                      const storageRef = ref(storage, `profiles/${user.uid}/${Date.now()}_${selectedFile.name}`);
+                      await uploadBytes(storageRef, selectedFile);
+                      photoUrlToSave = await getDownloadURL(storageRef);
+                    } else {
+                      // No storage available: use the client-side data URL preview
+                      photoUrlToSave = photoPreview as string;
+                    }
+                  } catch (uploadErr) {
+                    console.warn('Photo upload failed, falling back to preview/data URL', uploadErr);
+                    photoUrlToSave = photoPreview as string;
+                  }
+                }
+
+                // Update Firebase profile (auth)
                 const { updateProfile } = await import('firebase/auth');
-                await updateProfile(user, { displayName: name || null, photoURL: photo || null });
+                await updateProfile(user, { displayName: name || null, photoURL: photoUrlToSave || null });
+
                 // Ensure/get backend user id then patch
                 try {
-                  const res1 = await fetch('/api/users/ensure', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firebaseUid: user.uid, email: user.email, displayName: name || user.email || 'User', photoUrl: photo }) });
+                  const res1 = await fetch('/api/users/ensure', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firebaseUid: user.uid, email: user.email, displayName: name || user.email || 'User', photoUrl: photoUrlToSave }) });
                   if (res1.ok) {
                     const bu = await res1.json();
-                    await fetch(`/api/users/${bu.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ displayName: name, photoUrl: photo }) });
+                    await fetch(`/api/users/${bu.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ displayName: name, photoUrl: photoUrlToSave }) });
                   }
-                } catch {}
+                } catch (e) {
+                  console.warn('Backend update failed', e);
+                }
+
                 toast({ title: 'Profile updated' });
                 setEditOpen(false);
               } catch (e: any) {
