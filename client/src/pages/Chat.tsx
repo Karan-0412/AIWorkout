@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
+import { useNotifier } from "@/hooks/use-notifier";
 
 type ChatItem = { id: string; user1Id?: string; user2Id?: string; lastMessage?: string; lastMessageAt?: string; };
 type ChatDisplay = { id: string; lastMessage?: string; lastMessageAt?: string; participant?: { id: string; displayName?: string; photoUrl?: string | null } };
