@@ -21,6 +21,17 @@ export function Auth() {
     e.preventDefault();
     setLoading(true);
 
+    if (!isFirebaseConfigured || !auth) {
+      toast({
+        title: "Firebase not configured",
+        description:
+          "Authentication is not available because Firebase VITE_* env vars are not set. Provide them or connect a provider.",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
     try {
       if (isSignUp) {
         await createUserWithEmailAndPassword(auth, email, password);
@@ -47,6 +58,16 @@ export function Auth() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (!isFirebaseConfigured || !auth) {
+      const { toast } = useToast();
+      toast({
+        title: "Firebase not configured",
+        description: "Google sign-in is not available in this environment.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
