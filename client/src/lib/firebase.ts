@@ -3,27 +3,46 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-function requireEnv(name: string): string {
+function getEnv(name: string): string | undefined {
   const value = (import.meta as any).env?.[name];
   if (typeof value !== "string" || value.trim() === "" || value === "undefined") {
-    throw new Error(`Missing required env var ${name}. Set it in your environment (Vite exposes VITE_* vars).`);
+    return undefined;
   }
   return value;
 }
 
-const projectId = requireEnv("VITE_FIREBASE_PROJECT_ID");
-const firebaseConfig = {
-  apiKey: requireEnv("VITE_FIREBASE_API_KEY"),
-  authDomain: `${projectId}.firebaseapp.com`,
-  projectId,
-  // Using appspot.com is broadly compatible; firebasestorage.app also works for newer projects
-  storageBucket: `${projectId}.appspot.com`,
-  appId: requireEnv("VITE_FIREBASE_APP_ID"),
-};
+const projectId = getEnv("VITE_FIREBASE_PROJECT_ID");
+const apiKey = getEnv("VITE_FIREBASE_API_KEY");
+const appId = getEnv("VITE_FIREBASE_APP_ID");
 
-const app = initializeApp(firebaseConfig);
+const isFirebaseConfigured = Boolean(projectId && apiKey && appId);
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+let app = null as any;
+let auth = null as any;
+let db = null as any;
+let storage = null as any;
+
+if (isFirebaseConfigured) {
+  const firebaseConfig = {
+    apiKey,
+    authDomain: `${projectId}.firebaseapp.com`,
+    projectId,
+    // Using appspot.com is broadly compatible; firebasestorage.app also works for newer projects
+    storageBucket: `${projectId}.appspot.com`,
+    appId,
+  } as any;
+
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
+} else {
+  // When Firebase is not configured, avoid throwing during module import so the app can render.
+  // Consumers should check `isFirebaseConfigured` before using auth/db/storage.
+  console.warn(
+    "Firebase is not configured. Set VITE_FIREBASE_PROJECT_ID, VITE_FIREBASE_API_KEY and VITE_FIREBASE_APP_ID to enable Firebase features."
+  );
+}
+
+export { auth, db, storage, isFirebaseConfigured };
 export default app;

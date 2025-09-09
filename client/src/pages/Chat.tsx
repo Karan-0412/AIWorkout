@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
+import { useNotifier } from "@/hooks/use-notifier";
 
-type ChatItem = { id: string; lastMessage?: string; lastMessageAt?: string };
+type ChatItem = { id: string; user1Id?: string; user2Id?: string; lastMessage?: string; lastMessageAt?: string; };
+type ChatDisplay = { id: string; lastMessage?: string; lastMessageAt?: string; participant?: { id: string; displayName?: string; photoUrl?: string | null } };
 type Message = { id: string; chatId: string; senderId: string; content: string; createdAt?: string; isRead?: boolean; messageType?: 'text' | 'image' | 'file'; fileName?: string; status?: 'sent' | 'delivered' | 'read' };
 
 async function ensureBackendUser(firebaseUser: any) {
@@ -40,7 +42,7 @@ function ChatsList() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const [backendUser, setBackendUser] = useState<any>();
-  const [chats, setChats] = useState<ChatItem[]>([]);
+  const [chats, setChats] = useState<ChatDisplay[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -50,17 +52,35 @@ function ChatsList() {
         setBackendUser(u);
         const res = await fetch(`/api/users/${u.id}/chats`);
         if (res.ok) {
-          setChats(await res.json());
+          const rawChats: ChatItem[] = await res.json();
+
+          // Fetch participant info for each chat (the other user)
+          const enriched = await Promise.all(
+            rawChats.map(async (ch): Promise<ChatDisplay> => {
+              try {
+                const otherId = ch.user1Id === u.id ? ch.user2Id : ch.user1Id;
+                if (!otherId) return { id: ch.id, lastMessage: ch.lastMessage, lastMessageAt: ch.lastMessageAt };
+                const pRes = await fetch(`/api/users/${otherId}`);
+                if (pRes.ok) {
+                  const participant = await pRes.json();
+                  return { id: ch.id, lastMessage: ch.lastMessage, lastMessageAt: ch.lastMessageAt, participant: { id: participant.id, displayName: participant.displayName, photoUrl: participant.photoUrl } };
+                }
+              } catch {}
+              return { id: ch.id, lastMessage: ch.lastMessage, lastMessageAt: ch.lastMessageAt };
+            })
+          );
+
+          setChats(enriched);
         } else {
           setChats([
-            { id: "sample-1", lastMessage: "Hey! Interested in the offer?", lastMessageAt: new Date().toISOString() },
-            { id: "sample-2", lastMessage: "Can we meet near MG Road?", lastMessageAt: new Date(Date.now() - 3600_000).toISOString() },
+            { id: "sample-1", lastMessage: "Hey! Interested in the offer?", lastMessageAt: new Date().toISOString(), participant: { id: 'sample-user', displayName: 'Alice' } },
+            { id: "sample-2", lastMessage: "Can we meet near MG Road?", lastMessageAt: new Date(Date.now() - 3600_000).toISOString(), participant: { id: 'sample-user-2', displayName: 'Bob' } },
           ]);
         }
       } catch {
         setChats([
-          { id: "sample-1", lastMessage: "Hey! Interested in the offer?", lastMessageAt: new Date().toISOString() },
-          { id: "sample-2", lastMessage: "Can we meet near MG Road?", lastMessageAt: new Date(Date.now() - 3600_000).toISOString() },
+          { id: "sample-1", lastMessage: "Hey! Interested in the offer?", lastMessageAt: new Date().toISOString(), participant: { id: 'sample-user', displayName: 'Alice' } },
+          { id: "sample-2", lastMessage: "Can we meet near MG Road?", lastMessageAt: new Date(Date.now() - 3600_000).toISOString(), participant: { id: 'sample-user-2', displayName: 'Bob' } },
         ]);
       }
     })();
@@ -75,9 +95,15 @@ function ChatsList() {
         {chats.map((c) => (
           <button key={c.id} onClick={() => navigate(`/chat/${c.id}`)} className="w-full text-left p-4 rounded-xl border border-border bg-card hover:bg-accent/10">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Chat</p>
-                <p className="text-sm text-muted-foreground line-clamp-1">{c.lastMessage || "No messages yet"}</p>
+              <div className="flex items-center gap-3">
+                <Avatar className="w-10 h-10">
+                  <AvatarImage src={c.participant?.photoUrl || ""} alt={c.participant?.displayName || "User"} />
+                  <AvatarFallback>{(c.participant?.displayName || "U")[0]}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{c.participant?.displayName || "Chat"}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-1">{c.lastMessage || "No messages yet"}</p>
+                </div>
               </div>
               <span className="text-xs text-muted-foreground">{c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleTimeString() : ""}</span>
             </div>
@@ -95,6 +121,7 @@ function ChatRoom({ chatId }: { chatId: string }) {
   const [backendUser, setBackendUser] = useState<any>();
   const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState("");
+  const [participants, setParticipants] = useState<Record<string, { displayName?: string; photoUrl?: string | null }>>({});
   const [attachments, setAttachments] = useState<{ id: string; url: string; name: string; type: 'image' | 'file' }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wsRef = useWs(backendUser?.id);
@@ -110,24 +137,47 @@ function ChatRoom({ chatId }: { chatId: string }) {
           const serverMsgs: Message[] = await res.json();
           setMessages(serverMsgs.map(m => ({ ...m, status: m.isRead ? 'read' : 'delivered' })));
           fetch(`/api/chats/${chatId}/mark-read`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: u.id }) });
+
+          // Fetch participant info for message senders (excluding current user)
+          const senderIds = Array.from(new Set(serverMsgs.map(m => m.senderId).filter(id => id && id !== u.id && id !== 'me')));
+          if (senderIds.length > 0) {
+            const map: Record<string, { displayName?: string; photoUrl?: string | null }> = {};
+            await Promise.all(senderIds.map(async (sid) => {
+              try {
+                const r = await fetch(`/api/users/${sid}`);
+                if (r.ok) {
+                  const p = await r.json();
+                  map[sid] = { displayName: p.displayName, photoUrl: p.photoUrl };
+                }
+              } catch {}
+            }));
+            if (Object.keys(map).length) setParticipants(prev => ({ ...prev, ...map }));
+          }
         } else {
-          setMessages([
+          const fallback = [
             { id: "m1", chatId, senderId: "other", content: "Hi! I'm interested in splitting this deal." },
             { id: "m2", chatId, senderId: "me", content: "Great! Let's coordinate.", status: 'read' },
             { id: "m3", chatId, senderId: "other", content: "I'm free this evening around 6 PM." },
             { id: "m4", chatId, senderId: "me", content: "Perfect, see you at Koramangala Starbucks.", status: 'delivered' },
-          ]);
+          ];
+          setMessages(fallback);
+          // map sample sender ids to friendly participant names so AvatarFallback shows initials correctly
+          setParticipants(prev => ({ ...prev, other: { displayName: 'Alice' }, me: { displayName: u?.displayName || 'You' } }));
         }
       } catch {
-        setMessages([
+        const fallback = [
           { id: "m1", chatId, senderId: "other", content: "Hi! I'm interested in splitting this deal." },
           { id: "m2", chatId, senderId: "me", content: "Great! Let's coordinate.", status: 'read' },
           { id: "m3", chatId, senderId: "other", content: "I'm free this evening around 6 PM." },
           { id: "m4", chatId, senderId: "me", content: "Perfect, see you at Koramangala Starbucks.", status: 'delivered' },
-        ]);
+        ];
+        setMessages(fallback);
+        setParticipants(prev => ({ ...prev, other: { displayName: 'Alice' }, me: { displayName: user?.displayName || 'You' } }));
       }
     })();
   }, [user, chatId]);
+
+  const { notify } = useNotifier();
 
   useEffect(() => {
     const ws = wsRef.current;
@@ -137,10 +187,43 @@ function ChatRoom({ chatId }: { chatId: string }) {
         const data = JSON.parse(evt.data);
         if (data.type === "new_message") {
           setMessages((m) => [...m, data.message]);
+
+          const sid = data.message?.senderId;
+          if (sid && sid !== backendUser?.id && sid !== 'me' && !participants[sid]) {
+            (async () => {
+              try {
+                const r = await fetch(`/api/users/${sid}`);
+                if (r.ok) {
+                  const p = await r.json();
+                  setParticipants(prev => ({ ...prev, [sid]: { displayName: p.displayName, photoUrl: p.photoUrl } }));
+
+                  // Show notification if window not focused or user is not in this chat
+                  const title = p.displayName || 'New message';
+                  const body = data.message.content?.slice(0, 120) || 'You have a new message';
+                  const icon = p.photoUrl || undefined;
+
+                  const shouldNotify = document.hidden || true; // always notify for demo; refine as needed
+                  if (shouldNotify) {
+                    notify({
+                      title,
+                      body,
+                      icon,
+                      onClick: () => {
+                        window.focus();
+                        // navigate to the chat
+                        try { window.location.href = `/chat/${data.message.chatId}`; } catch (e) {}
+                      },
+                      ttl: 10000,
+                    });
+                  }
+                }
+              } catch {}
+            })();
+          }
         }
       } catch {}
     };
-  }, [wsRef]);
+  }, [wsRef, backendUser, participants, notify]);
 
   const handleSend = async () => {
     const text = message.trim();
@@ -206,7 +289,10 @@ function ChatRoom({ chatId }: { chatId: string }) {
           return (
             <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
               {!isMe && (
-                <Avatar className="w-8 h-8 shrink-0"><AvatarFallback>U</AvatarFallback></Avatar>
+                <Avatar className="w-8 h-8 shrink-0">
+                  <AvatarImage src={participants[msg.senderId]?.photoUrl || ""} alt={participants[msg.senderId]?.displayName || msg.senderId} />
+                  <AvatarFallback>{(participants[msg.senderId]?.displayName?.[0] || msg.senderId?.[0] || "U").toUpperCase()}</AvatarFallback>
+                </Avatar>
               )}
               <div className={`max-w-[70%] ${isMe ? 'items-end text-right' : ''}`}>
                 <div className={`relative rounded-2xl shadow ${isMe ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-card border border-border rounded-bl-sm'}`}>

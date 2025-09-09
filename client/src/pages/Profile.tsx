@@ -20,6 +20,8 @@ export function Profile() {
   const [editOpen, setEditOpen] = useState(false);
   const [name, setName] = useState("");
   const [photo, setPhoto] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -183,7 +185,7 @@ export function Profile() {
       </div>
       {/* Edit Profile Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[92vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Profile</DialogTitle>
           </DialogHeader>
@@ -193,8 +195,38 @@ export function Profile() {
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
             </div>
             <div>
-              <label className="text-sm mb-1 block">Photo URL</label>
-              <Input value={photo} onChange={(e) => setPhoto(e.target.value)} placeholder="https://..." />
+              <label className="text-sm mb-1 block">Profile photo</label>
+              <div className="flex items-center gap-3">
+                <div>
+                  <Avatar className="w-16 h-16">
+                    <AvatarImage src={photoPreview || photo || user?.photoURL || ""} alt={user?.displayName || ""} />
+                    <AvatarFallback className="text-xl">{(name || user?.displayName || user?.email || "U")[0]}</AvatarFallback>
+                  </Avatar>
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const f = e.target.files && e.target.files[0];
+                      if (f) {
+                        setSelectedFile(f);
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          setPhotoPreview(reader.result as string);
+                        };
+                        reader.readAsDataURL(f);
+                      } else {
+                        setSelectedFile(null);
+                        setPhotoPreview(null);
+                      }
+                    }}
+                    className="block w-full"
+                    data-testid="input-profile-photo"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Upload a JPG/PNG photo. The image will be uploaded to storage if available.</p>
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -202,17 +234,43 @@ export function Profile() {
             <Button onClick={async () => {
               try {
                 if (!user) return;
-                // Update Firebase profile
+
+                let photoUrlToSave: string | null = photo || null;
+
+                // If a new file was selected, try to upload it to Firebase Storage (if configured)
+                if (selectedFile) {
+                  try {
+                    const { isFirebaseConfigured, storage } = await import('@/lib/firebase');
+                    if (isFirebaseConfigured && storage) {
+                      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+                      const storageRef = ref(storage, `profiles/${user.uid}/${Date.now()}_${selectedFile.name}`);
+                      await uploadBytes(storageRef, selectedFile);
+                      photoUrlToSave = await getDownloadURL(storageRef);
+                    } else {
+                      // No storage available: use the client-side data URL preview
+                      photoUrlToSave = photoPreview as string;
+                    }
+                  } catch (uploadErr) {
+                    console.warn('Photo upload failed, falling back to preview/data URL', uploadErr);
+                    photoUrlToSave = photoPreview as string;
+                  }
+                }
+
+                // Update Firebase profile (auth)
                 const { updateProfile } = await import('firebase/auth');
-                await updateProfile(user, { displayName: name || null, photoURL: photo || null });
+                await updateProfile(user, { displayName: name || null, photoURL: photoUrlToSave || null });
+
                 // Ensure/get backend user id then patch
                 try {
-                  const res1 = await fetch('/api/users/ensure', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firebaseUid: user.uid, email: user.email, displayName: name || user.email || 'User', photoUrl: photo }) });
+                  const res1 = await fetch('/api/users/ensure', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firebaseUid: user.uid, email: user.email, displayName: name || user.email || 'User', photoUrl: photoUrlToSave }) });
                   if (res1.ok) {
                     const bu = await res1.json();
-                    await fetch(`/api/users/${bu.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ displayName: name, photoUrl: photo }) });
+                    await fetch(`/api/users/${bu.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ displayName: name, photoUrl: photoUrlToSave }) });
                   }
-                } catch {}
+                } catch (e) {
+                  console.warn('Backend update failed', e);
+                }
+
                 toast({ title: 'Profile updated' });
                 setEditOpen(false);
               } catch (e: any) {
@@ -225,7 +283,7 @@ export function Profile() {
 
       {/* Settings Dialog */}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[92vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Settings & Privacy</DialogTitle>
           </DialogHeader>
@@ -241,7 +299,7 @@ export function Profile() {
 
       {/* About Dialog */}
       <Dialog open={aboutOpen} onOpenChange={setAboutOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[92vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>About OfferShare</DialogTitle>
           </DialogHeader>
