@@ -1,0 +1,40 @@
+
+{
+  "project_info": {
+    "project_number": "9327658000",
+    "project_id": "coorder-6c58a",
+    "storage_bucket": "coorder-6c58a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:9327658000:android:1640523f66a1e939067695",
+        "android_client_info": {
+          "package_name": "coorder.com"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "9327658000-8rntl7qlhpsrmq2mqsevt7igsac630rd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAxtg9jobTT-jh_5HfATD1QBtTbSIpz5g8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "9327658000-8rntl7qlhpsrmq2mqsevt7igsac630rd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
